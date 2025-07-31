@@ -1,0 +1,47 @@
+.dashboard-tabs {
+  margin-bottom: 16px;
+}
+
+.dashboard-tabs .ant-tabs-nav {
+  margin-bottom: 16px;
+}
+
+.dashboard-tabs .ant-tabs-tab {
+  border-radius: 6px 6px 0 0;
+  padding: 8px 16px;
+}
+
+.dashboard-tabs .ant-tabs-tab-active {
+  background: transparent !important;
+}
+
+.dashboard-tabs .ant-tabs-ink-bar {
+  height: 2px;
+  background-color: #1890ff;
+}
+
+.dashboard-table .ant-table-thead > tr > th {
+  background: #fafafa;
+}
+
+.dashboard-table .ant-table-tbody > tr:hover > td {
+  background: #f5f7fa;
+}
+
+.dashboard-table .ant-pagination {
+  margin-top: 16px;
+  border-radius: 6px;
+}
+
+.dashboard-history-table .ant-table-cell {
+  padding: 8px 12px !important;
+} 
+
+.item-issues-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  padding: 8px;
+}
+
+.item-issues-table .ant-table-tbody > tr > td {
+  padding: 8px;
+} 

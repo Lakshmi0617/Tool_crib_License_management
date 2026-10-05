@@ -4,12 +4,12 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '172.18.100.33', // or use '0.0.0.0' to allow access from any local network IP
+    host: '0.0.0.0', // Allows access from localhost as well as any network IP
     port: 5173,
-    strictPort: true, // optional: ensures Vite throws error if port 5173 is taken
+    strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://172.18.100.33:8000',
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
         ws: true,

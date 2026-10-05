@@ -2,6 +2,19 @@ from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, Enum
 from db import Base
 import enum
 
+class Company(Base):
+    __tablename__ = "companies"
+    __table_args__ = {'schema': 'toolcrib'}
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    company_name = Column(String, nullable=False)
+    address = Column(String)
+    phone = Column(String)
+    email = Column(String)
+    project_name = Column(String)
+    created_at = Column(DateTime, default=func.now())
+    is_active = Column(String, default="yes")
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = {'schema': 'toolcrib'}
@@ -13,6 +26,7 @@ class User(Base):
     role = Column(String, nullable=False)  # 'operator', 'supervisor', 'officer'
     department = Column(String)
     contact = Column(String)
+    company_id = Column(Integer, ForeignKey('toolcrib.companies.id'), nullable=True)
     created_at = Column(DateTime, default=func.now())
 
 class ToolsList(Base):
@@ -133,4 +147,21 @@ class ActiveSession(Base):
     employee_id = Column(String, ForeignKey('toolcrib.users.employee_id'), nullable=False, unique=True)
     employee_name = Column(String, nullable=False)
     role = Column(String, nullable=False)  # 'supervisor' or 'officer'
+    company_id = Column(Integer, nullable=True)
     login_time = Column(DateTime, default=func.now())
+
+class LicenseInfo(Base):
+    __tablename__ = "license_info"
+    __table_args__ = {'schema': 'toolcrib'}
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    license_key = Column(String, nullable=False)
+    mac_address = Column(String, nullable=False)
+    company_id = Column(Integer, ForeignKey('toolcrib.companies.id'), nullable=True)
+    company_name = Column(String, nullable=True)
+    issued_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=True)  # Null means perpetual
+    sha256_hash = Column(String, nullable=True)
+    signature_ed25519 = Column(String, nullable=True)
+    is_active = Column(String, default="yes")
+    activated_at = Column(DateTime, default=func.now())

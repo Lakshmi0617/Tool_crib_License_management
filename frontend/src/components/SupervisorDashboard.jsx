@@ -67,6 +67,7 @@ import ToolRequestsHistory from './supervisor components/ToolRequestsHistory';
 import IssuesHistory from './supervisor components/IssuesHistory';
 import ToolReturnsHistory from './supervisor components/ToolReturnsHistory';
 import SupervisorHistory from './supervisor components/SupervisorHistory';
+import { getAuthHeaders } from '../config';
 
 const { Header, Content, Sider } = Layout;
 const { Option } = Select;
@@ -78,11 +79,10 @@ const fetchWithRetry = async (url, options = {}, retries = 3, delay = 1000) => {
     try {
       const response = await fetch(url, {
         ...options,
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
           ...options.headers
-        }
+        })
       });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -157,11 +157,11 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   const handleSave = async (record) => {
     try {
       const row = await form.validateFields();
-      const response = await fetch(`http://172.18.100.33:8000/api/tools/${record.id}`, {
+      const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
         method: 'PUT',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify({
           Item_Description: row.name,
           Range_in_mm: row.range,
@@ -195,14 +195,15 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       cancelText: 'No',
       onOk: async () => {
         try {
-          const response = await fetch(`http://172.18.100.33:8000/api/tools/${record.id}`, {
+          const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
             method: 'DELETE',
+            headers: getAuthHeaders()
           });
-          
+
           if (!response.ok) {
             throw new Error('Failed to delete tool');
           }
-          
+
           message.success('Tool deleted successfully');
           fetchTools();
         } catch (error) {
@@ -236,14 +237,14 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        await fetch(`http://172.18.100.33:8000/logout?employee_id=${user.employee_id}`, {
+        await fetch(`http://localhost:8000/logout?employee_id=${user.employee_id}`, {
           method: 'POST',
-          headers: {
+          headers: getAuthHeaders({
             'Content-Type': 'application/json',
-          }
+          })
         });
       }
-      
+
       // Clear local storage and call onLogout
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -263,12 +264,13 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   const fetchTools = async () => {
     try {
       setLoading(true);
+      const authHeaders = getAuthHeaders();
       // Fetch tools, requests, returns and issues in parallel
       const [toolsResponse, requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-        fetch('http://172.18.100.33:8000/api/tools'),
-        fetch('http://172.18.100.33:8000/api/tool-requests?status=approved&collected=yes&returned=no'),
-        fetch('http://172.18.100.33:8000/api/tool-returns/pending'),
-        fetch('http://172.18.100.33:8000/api/tool-issues/all')
+        fetch('http://localhost:8000/api/tools', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tool-requests?status=approved&collected=yes&returned=no', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tool-returns/pending', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders })
       ]);
 
       if (!toolsResponse.ok || !requestsResponse.ok || !returnsResponse.ok || !issuesResponse.ok) {
@@ -294,8 +296,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
       const toolsWithIssues = new Set(
         issuesData
-          .filter(issue => 
-            issue.officer_status === 'approved' && 
+          .filter(issue =>
+            issue.officer_status === 'approved' &&
             (!issue.supervisor_status || issue.supervisor_status === 'pending')
           )
           .map(issue => issue.request_id)
@@ -304,7 +306,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       // Count tools in use by each request, excluding returned and reported tools
       const toolsInUseCount = activeRequests.reduce((acc, request) => {
         const toolId = request.tool_sl_no;
-        
+
         // Skip if tool has been returned or has approved issues
         if (returnedTools.has(request.unique_request_id) || toolsWithIssues.has(request.unique_request_id)) {
           return acc;
@@ -320,7 +322,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       // Group active requests by tool_sl_no for user display, excluding returned and reported tools
       const requestsByTool = activeRequests.reduce((acc, request) => {
         const toolId = request.tool_sl_no;
-        
+
         // Skip if tool has been returned or has approved issues
         if (returnedTools.has(request.unique_request_id) || toolsWithIssues.has(request.unique_request_id)) {
           return acc;
@@ -346,7 +348,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
         const activeUsers = requestsByTool[tool.Sl_no] || [];
         const inUseCount = toolsInUseCount[tool.Sl_no] || 0;
         const totalQuantity = tool.Quantity || 0;
-        
+
         // Determine status based on quantity and usage
         let status;
         if (totalQuantity === 0) {
@@ -377,7 +379,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       const stats = mappedTools.reduce((acc, tool) => {
         // Total is sum of all quantities
         acc.total += tool.quantity;
-        
+
         if (tool.quantity === 0) {
           // If quantity is 0, tool is in maintenance
           acc.maintenance += 1;
@@ -413,7 +415,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
     // Check for authentication and user info
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    
+
     if (!token || !storedUser) {
       navigate('/login');
       return;
@@ -437,10 +439,10 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
     // Fetch all tool requests from backend
     const fetchRequests = async () => {
       try {
-        const response = await fetch('http://172.18.100.33:8000/api/tool-requests');
+        const response = await fetch('http://localhost:8000/api/tool-requests', { headers: getAuthHeaders() });
         if (!response.ok) throw new Error('Failed to fetch requests');
         const data = await response.json();
-        
+
         // Map the data to ensure all fields are present
         const mappedRequests = data.map(request => ({
           ...request,
@@ -452,7 +454,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           project_details: request.project_details || '',
           status: request.status || 'pending'
         }));
-        
+
         console.log('Mapped Requests:', mappedRequests); // Add this for debugging
         setRequests(mappedRequests);
       } catch (err) {
@@ -472,10 +474,11 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Update fetchToolSubmitRequests function
   const fetchToolSubmitRequests = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       // Fetch both pending and collected returns
       const [pendingResponse, collectedResponse] = await Promise.all([
-        fetch('http://172.18.100.33:8000/api/tool-returns/pending'),
-        fetch('http://172.18.100.33:8000/api/tool-returns/all?status=collected')
+        fetch('http://localhost:8000/api/tool-returns/pending', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tool-returns/all?status=collected', { headers: authHeaders })
       ]);
 
       if (!pendingResponse.ok || !collectedResponse.ok) {
@@ -490,7 +493,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       // Set pending and collected returns separately
       setPendingReturns(pendingData);
       setCollectedReturns(collectedData);
-      
+
       // Combine for display
       setToolSubmitRequests([...pendingData, ...collectedData]);
     } catch (error) {
@@ -502,13 +505,13 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Add function to only fetch pending returns
   const fetchPendingReturns = async () => {
     try {
-      const response = await fetch('http://172.18.100.33:8000/api/tool-returns/pending');
+      const response = await fetch('http://localhost:8000/api/tool-returns/pending', { headers: getAuthHeaders() });
       if (!response.ok) {
         throw new Error('Failed to fetch pending returns');
       }
       const pendingData = await response.json();
       setPendingReturns(pendingData);
-      
+
       // Update combined list while keeping collected returns
       setToolSubmitRequests([...pendingData, ...collectedReturns]);
     } catch (error) {
@@ -518,55 +521,55 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
   const handleStatusChange = async (requestId, newStatus) => {
     try {
-      let endpoint = `http://172.18.100.33:8000/api/tool-requests/${requestId}`;
-      
+      let endpoint = `http://localhost:8000/api/tool-requests/${requestId}`;
+
       if (newStatus === 'approved') {
-        endpoint = `http://172.18.100.33:8000/api/tool-requests/${requestId}/approve`;
+        endpoint = `http://localhost:8000/api/tool-requests/${requestId}/approve`;
         const response = await fetch(endpoint, {
           method: 'PUT',
-          headers: {
+          headers: getAuthHeaders({
             'Content-Type': 'application/json',
-          },
+          }),
           body: JSON.stringify({
             supervisor_id: currentUserInfo?.employee_id,
             supervisor_name: currentUserInfo?.employee_name,
             status: newStatus
           })
         });
-        
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.detail || 'Failed to approve request');
         }
-        
+
         const updated = await response.json();
-        const newRequests = requests.map(req => 
+        const newRequests = requests.map(req =>
           req.id === updated.id ? { ...updated, loading: false } : req
         );
         setRequests(newRequests);
         setFilteredRequests(newRequests);
-        
+
         // Refresh tools list after approval
         fetchTools();
       } else {
         endpoint = `${endpoint}?status=${newStatus}`;
         const response = await fetch(endpoint, {
           method: 'PATCH',
-          headers: {
+          headers: getAuthHeaders({
             'Content-Type': 'application/json',
-          }
+          })
         });
-        
+
         if (!response.ok) throw new Error('Failed to update status');
-        
+
         const updated = await response.json();
-        const newRequests = requests.map(req => 
+        const newRequests = requests.map(req =>
           req.id === updated.id ? { ...updated, loading: false } : req
         );
         setRequests(newRequests);
         setFilteredRequests(newRequests);
       }
-      
+
       message.success(`Request ${newStatus} successfully`);
     } catch (error) {
       console.error('Error updating request:', error);
@@ -627,12 +630,12 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
             <Input />
           </Form.Item>
         ) : (
-          <Button 
-            type="link" 
+          <Button
+            type="link"
             onClick={() => setSelectedItemDescription(text)}
-            style={{ 
-              padding: 0, 
-              height: 'auto', 
+            style={{
+              padding: 0,
+              height: 'auto',
               lineHeight: 'inherit',
               color: '#1e88e5',
               fontWeight: 500,
@@ -718,9 +721,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
             <InputNumber min={0} />
           </Form.Item>
         ) : (
-          <span style={{ 
+          <span style={{
             color: text > 0 ? '#2e7d32' : '#c62828',
-            fontWeight: 500 
+            fontWeight: 500
           }}>
             {text}
           </span>
@@ -959,8 +962,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       render: (_, record) => (
         <Tag color={
           record.severity === 'high' ? 'red' :
-          record.severity === 'medium' ? 'orange' :
-          'green'
+            record.severity === 'medium' ? 'orange' :
+              'green'
         }>
           {record.severity.toUpperCase()}
         </Tag>
@@ -1010,8 +1013,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       key: 'supervisor_status',
       width: 120,
       render: (_, record) => {
-        const color = record.supervisor_status === 'approved' ? 'success' : 
-                     record.supervisor_status === 'rejected' ? 'error' : 'warning';
+        const color = record.supervisor_status === 'approved' ? 'success' :
+          record.supervisor_status === 'rejected' ? 'error' : 'warning';
         return <Tag color={color}>{(record.supervisor_status || 'pending').toUpperCase()}</Tag>;
       },
     },
@@ -1022,7 +1025,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       fixed: 'right',
       render: (_, record) => {
         const supervisorHasActed = record.supervisor_status && record.supervisor_status !== 'pending';
-        
+
         return (
           <Space>
             <Button
@@ -1048,13 +1051,13 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Update filteredTools
   const filteredTools = useMemo(() => {
     return tools.filter(tool => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         (tool.name && tool.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (tool.range && tool.range.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (tool.identificationCode && tool.identificationCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (tool.make && tool.make.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchesCategory = selectedCategory === 'all' || 
+      const matchesCategory = selectedCategory === 'all' ||
         (selectedCategory === tool.name);
 
       const matchesStatus = activeTab === 'all' || tool.status === activeTab;
@@ -1107,11 +1110,11 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Update handleCollectTool function
   const handleCollectTool = async (returnId) => {
     try {
-      const response = await fetch(`http://172.18.100.33:8000/api/tool-returns/${returnId}/collect`, {
+      const response = await fetch(`http://localhost:8000/api/tool-returns/${returnId}/collect`, {
         method: 'PATCH',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify({
           supervisor_id: currentUserInfo.employee_id,
           supervisor_name: currentUserInfo.employee_name,
@@ -1125,12 +1128,12 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
       const collectedReturn = await response.json();
       message.success('Tool collected successfully');
-      
+
       // Update states
       setPendingReturns(prev => prev.filter(r => r.id !== returnId));
       setCollectedReturns(prev => [...prev, collectedReturn]);
       setToolSubmitRequests(prev => prev.map(r => r.id === returnId ? collectedReturn : r));
-      
+
       // Refresh tools data
       await fetchTools();
     } catch (error) {
@@ -1247,9 +1250,10 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Update fetchIssues function
   const fetchIssues = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       const [issuesResponse, toolsResponse] = await Promise.all([
-        fetch('http://172.18.100.33:8000/api/tool-issues/all'),
-        fetch('http://172.18.100.33:8000/api/tools')
+        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tools', { headers: authHeaders })
       ]);
 
       const [issues, tools] = await Promise.all([
@@ -1281,12 +1285,12 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   const handleIssueApproval = async (issueId, status) => {
     try {
       const response = await fetch(
-        `http://172.18.100.33:8000/api/tool-issues/${issueId}/supervisor-action`,
+        `http://localhost:8000/api/tool-issues/${issueId}/supervisor-action`,
         {
           method: 'PUT',
-          headers: {
+          headers: getAuthHeaders({
             'Content-Type': 'application/json',
-          },
+          }),
           body: JSON.stringify({
             action: status,
             supervisor_id: currentUserInfo?.employee_id,
@@ -1310,8 +1314,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
   // Add a function to count pending issues
   const getPendingIssuesCount = (issues) => {
-    return issues.filter(issue => 
-      issue.officer_status === 'approved' && 
+    return issues.filter(issue =>
+      issue.officer_status === 'approved' &&
       (!issue.supervisor_status || issue.supervisor_status === 'pending')
     ).length;
   };
@@ -1319,28 +1323,28 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Update useEffect to fetch issues periodically
   useEffect(() => {
     let isSubscribed = true;
-    
+
     const fetchData = async () => {
       if (!isSubscribed) return;
-      
+
       try {
         await fetchTools();
         await fetchIssues();
-        
+
         // Fetch tool requests
         if (currentUserInfo?.employee_id) {
-          const response = await fetchWithRetry(`http://172.18.100.33:8000/new-tool-requests/supervisor/${currentUserInfo.employee_id}`);
+          const response = await fetchWithRetry(`http://localhost:8000/new-tool-requests/supervisor/${currentUserInfo.employee_id}`);
           if (!isSubscribed) return;
           const data = await response.json();
           setPendingToolRequests(data.filter(req => req.status === 'pending'));
         }
-        
+
         // Fetch tool returns
-        const returnsResponse = await fetchWithRetry('http://172.18.100.33:8000/api/tool-returns/pending');
+        const returnsResponse = await fetchWithRetry('http://localhost:8000/api/tool-returns/pending');
         if (!isSubscribed) return;
         const returnsData = await returnsResponse.json();
         setToolSubmitRequests(returnsData);
-        
+
       } catch (error) {
         console.error('Error fetching data:', error);
         if (isSubscribed) {
@@ -1350,7 +1354,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
     };
 
     fetchData();
-    
+
     return () => {
       isSubscribed = false;
     };
@@ -1360,8 +1364,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   const headerMenu = (
     <Menu>
       <Menu.Item key="officer_approved_issues" onClick={() => setOfficerApprovedIssuesModalVisible(true)}>
-        <Badge 
-          count={getPendingIssuesCount(officerApprovedIssues)} 
+        <Badge
+          count={getPendingIssuesCount(officerApprovedIssues)}
           offset={[10, 0]}
           style={{ backgroundColor: '#1890ff' }}
         >
@@ -1392,10 +1396,10 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Update fetchPendingToolRequests function
   const fetchPendingToolRequests = async () => {
     if (!currentUserInfo?.employee_id) return;
-    
+
     try {
       setLoading(true);
-      const response = await fetch(`http://172.18.100.33:8000/new-tool-requests/supervisor/${currentUserInfo.employee_id}`);
+      const response = await fetch(`http://localhost:8000/new-tool-requests/supervisor/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch tool requests');
       const data = await response.json();
       setPendingToolRequests(data);
@@ -1411,15 +1415,15 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   useEffect(() => {
     const fetchInitialData = async () => {
       if (!currentUserInfo?.employee_id) return;
-      
+
       try {
         setLoading(true);
         await fetchTools();
         await fetchIssues();
         await fetchPendingToolRequests();
-        
+
         // Fetch tool returns
-        const returnsResponse = await fetchWithRetry('http://172.18.100.33:8000/api/tool-returns/pending');
+        const returnsResponse = await fetchWithRetry('http://localhost:8000/api/tool-returns/pending');
         const returnsData = await returnsResponse.json();
         setToolSubmitRequests(returnsData);
       } catch (error) {
@@ -1443,7 +1447,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
             await fetchTools();
             break;
           case 'requests':
-            const response = await fetch('http://172.18.100.33:8000/api/tool-requests');
+            const response = await fetch('http://localhost:8000/api/tool-requests', { headers: getAuthHeaders() });
             if (!response.ok) throw new Error('Failed to fetch requests');
             const data = await response.json();
             setRequests(data);
@@ -1453,7 +1457,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
             await fetchIssues();
             break;
           case 'returns':
-            const returnsResponse = await fetch('http://172.18.100.33:8000/api/tool-returns/pending');
+            const returnsResponse = await fetch('http://localhost:8000/api/tool-returns/pending', { headers: getAuthHeaders() });
             if (!returnsResponse.ok) throw new Error('Failed to fetch returns');
             const returnsData = await returnsResponse.json();
             setToolSubmitRequests(returnsData);
@@ -1485,7 +1489,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           await fetchTools();
           break;
         case 'requests':
-          const response = await fetch('http://172.18.100.33:8000/api/tool-requests');
+          const response = await fetch('http://localhost:8000/api/tool-requests', { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch requests');
           const data = await response.json();
           setRequests(data);
@@ -1495,7 +1499,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           await fetchIssues();
           break;
         case 'returns':
-          const returnsResponse = await fetch('http://172.18.100.33:8000/api/tool-returns/pending');
+          const returnsResponse = await fetch('http://localhost:8000/api/tool-returns/pending', { headers: getAuthHeaders() });
           if (!returnsResponse.ok) throw new Error('Failed to fetch returns');
           const returnsData = await returnsResponse.json();
           setToolSubmitRequests(returnsData);
@@ -1523,7 +1527,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
   const handleDateRangeChange = (dates) => {
     setDateRange(dates);
-    
+
     if (dates && dates[0] && dates[1]) {
       const filtered = getFilteredRequests(pendingToolRequests, dates);
       if (filtered.length === 0) {
@@ -1546,9 +1550,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        collapsible 
-        collapsed={collapsed} 
+      <Sider
+        collapsible
+        collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
           background: '#1e88e5',
@@ -1562,7 +1566,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
         }}
         width={220}
       >
-        <div style={{ 
+        <div style={{
           padding: '20px',
           display: 'flex',
           alignItems: 'center',
@@ -1570,20 +1574,20 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           borderBottom: '1px solid rgba(255,255,255,0.1)',
           background: '#1e88e5'
         }}>
-          <img 
-            src={cmtisLogo} 
-            alt="CMTIS Logo" 
-            style={{ 
+          <img
+            src={cmtisLogo}
+            alt="CMTIS Logo"
+            style={{
               height: '40px',
               filter: 'brightness(0) invert(1)' // Makes logo white
-            }} 
+            }}
           />
         </div>
 
         <Menu
           mode="inline"
           selectedKeys={[selectedMenu]}
-          style={{ 
+          style={{
             borderRight: 0,
             background: '#1e88e5',
             color: '#ffffff',
@@ -1653,7 +1657,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                 setToolSubmitRequestsVisible(true);
               }
             },
-            
+
             {
               key: 'issues',
               icon: <AlertOutlined style={{ color: '#ffffff', fontSize: '18px' }} />,
@@ -1677,7 +1681,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                 setOfficerAcceptedIssuesVisible(true);
               }
             },
-           
+
             {
               key: 'new-request',
               icon: <PlusOutlined style={{ color: '#ffffff', fontSize: '18px' }} />,
@@ -1715,8 +1719,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       </Sider>
 
       <Layout style={{ marginLeft: 220 }}>
-        <Header style={{ 
-          background: '#ffffff', 
+        <Header style={{
+          background: '#ffffff',
           padding: '0 24px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           display: 'flex',
@@ -1729,11 +1733,11 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           </Space>
           <Space>
             <Space style={{ marginRight: 24 }}>
-              <Avatar 
-                style={{ 
+              <Avatar
+                style={{
                   backgroundColor: '#4096ff',
-                  verticalAlign: 'middle' 
-                }} 
+                  verticalAlign: 'middle'
+                }}
                 size="large"
                 icon={<UserOutlined />}
               />
@@ -1741,9 +1745,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                 {currentUserInfo?.employee_name || 'Supervisor'}
               </span>
             </Space>
-            <Button 
-              type="primary" 
-              icon={<LogoutOutlined />} 
+            <Button
+              type="primary"
+              icon={<LogoutOutlined />}
               onClick={handleLogout}
               danger
             >
@@ -1758,9 +1762,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
               {/* Tool Statistics */}
               <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)',
                       border: '1px solid rgba(30, 136, 229, 0.2)',
@@ -1800,9 +1804,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f6fbf6 100%)',
                       border: '1px solid rgba(46, 125, 50, 0.2)',
@@ -1842,9 +1846,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #fff9f0 100%)',
                       border: '1px solid rgba(239, 108, 0, 0.2)',
@@ -1884,9 +1888,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #fff1f1 100%)',
                       border: '1px solid rgba(198, 40, 40, 0.2)',
@@ -1930,9 +1934,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
               {/* Request Statistics */}
               <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)',
                       border: '1px solid rgba(30, 136, 229, 0.2)',
@@ -1972,9 +1976,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #fffbf2 100%)',
                       border: '1px solid rgba(245, 127, 23, 0.2)',
@@ -2014,9 +2018,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f6fbf6 100%)',
                       border: '1px solid rgba(46, 125, 50, 0.2)',
@@ -2056,9 +2060,9 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #fff1f1 100%)',
                       border: '1px solid rgba(198, 40, 40, 0.2)',
@@ -2100,8 +2104,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
               </Row>
 
               {/* Tools Management Section */}
-              <Card 
-                style={{ 
+              <Card
+                style={{
                   borderRadius: '12px',
                   background: '#fff',
                   boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -2115,7 +2119,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                       allowClear
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      style={{ 
+                      style={{
                         width: 300,
                         '.ant-input': {
                           borderRadius: '8px',
@@ -2133,7 +2137,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                     <Select
                       value={selectedCategory}
                       onChange={setSelectedCategory}
-                      style={{ 
+                      style={{
                         width: 200,
                         fontFamily: 'Segoe UI, Roboto, sans-serif',
                         fontSize: '14px',
@@ -2164,8 +2168,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                 </Space>
 
                 <div style={{ marginBottom: '16px' }}>
-                  <Tabs 
-                    activeKey={activeTab} 
+                  <Tabs
+                    activeKey={activeTab}
                     onChange={handleTabChange}
                     items={tabItems}
                     style={{
@@ -2195,8 +2199,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   />
                 </div>
 
-                <div style={{ 
-                  display: 'flex', 
+                <div style={{
+                  display: 'flex',
                   justifyContent: 'flex-end',
                   marginBottom: '16px',
                   marginTop: '8px'
@@ -2302,8 +2306,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           )}
 
           {selectedMenu === 'requests' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -2316,13 +2320,13 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   <Text strong style={{ fontSize: '20px', color: '#262626' }}>Tool Requests</Text>
                 </Space>
               </div>
-              
-              <ToolRequestsHistory 
-                requests={requests} 
+
+              <ToolRequestsHistory
+                requests={requests}
                 onFilterChange={setFilteredRequests}
                 tools={tools}
               />
-              
+
               <Table
                 columns={requestColumns}
                 dataSource={filteredRequests}
@@ -2352,8 +2356,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           )}
 
           {selectedMenu === 'returns' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -2366,13 +2370,13 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   <Text strong style={{ fontSize: '20px', color: '#262626' }}>Tool Returns</Text>
                 </Space>
               </div>
-              
-              <ToolReturnsHistory 
+
+              <ToolReturnsHistory
                 returns={toolSubmitRequests}
                 onFilterChange={setToolSubmitRequests}
                 tools={tools}
               />
-              
+
               <Table
                 columns={toolSubmitColumns}
                 dataSource={toolSubmitRequests}
@@ -2402,8 +2406,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           )}
 
           {selectedMenu === 'issues' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -2416,13 +2420,13 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   <Text strong style={{ fontSize: '20px', color: '#262626' }}>Officer Accepted Issues</Text>
                 </Space>
               </div>
-              
-              <IssuesHistory 
+
+              <IssuesHistory
                 issues={officerApprovedIssues}
                 onFilterChange={(filtered) => setOfficerApprovedIssues(filtered)}
                 tools={tools}
               />
-              
+
               <Table
                 columns={officerAcceptedIssuesColumns}
                 dataSource={officerApprovedIssues}
@@ -2452,17 +2456,17 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           )}
 
           {selectedMenu === 'new-request' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
                 marginBottom: '24px'
               }}
             >
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: '24px'
               }}>
@@ -2474,13 +2478,13 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   </Tag>
                 </Space>
                 <Space>
-                  <DateRangeFilter 
-                    dateRange={dateRange} 
-                    onDateRangeChange={handleDateRangeChange} 
+                  <DateRangeFilter
+                    dateRange={dateRange}
+                    onDateRangeChange={handleDateRangeChange}
                   />
-                  <DownloadButton 
-                    dateRange={dateRange} 
-                    requests={filteredRequests} 
+                  <DownloadButton
+                    dateRange={dateRange}
+                    requests={filteredRequests}
                   />
                   <Button
                     type="primary"
@@ -2534,8 +2538,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           )}
 
           {selectedMenu === 'history' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -2548,7 +2552,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
                   <Text strong style={{ fontSize: '20px', color: '#262626' }}>My Action History</Text>
                 </Space>
               </div>
-              
+
               <SupervisorHistory supervisorId={currentUserInfo?.employee_id} />
             </Card>
           )}
@@ -2568,10 +2572,10 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
             style={{ top: 20 }}
           >
             {selectedUser && (
-              <Descriptions 
-                bordered 
+              <Descriptions
+                bordered
                 column={1}
-                labelStyle={{ 
+                labelStyle={{
                   background: '#fafafa',
                   padding: '12px 24px',
                   fontWeight: 500
@@ -2618,8 +2622,8 @@ const EditableCell = ({
   children,
   ...restProps
 }) => {
-  const inputNode = inputType === 'number' ? 
-    <InputNumber min={0} /> : 
+  const inputNode = inputType === 'number' ?
+    <InputNumber min={0} /> :
     <Input />;
 
   return (

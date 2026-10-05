@@ -13,7 +13,9 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-router = APIRouter()
+from auth import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 logger = logging.getLogger(__name__)
 
 @router.post("/new-tool-requests", response_model=NewToolRequestResponse)

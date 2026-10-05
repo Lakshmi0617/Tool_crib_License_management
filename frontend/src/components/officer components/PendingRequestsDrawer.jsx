@@ -4,6 +4,7 @@ import { CheckOutlined, CloseOutlined, ToolOutlined, DownloadOutlined } from '@a
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import dayjs from 'dayjs';
+import { getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -20,11 +21,11 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
         status: 'approved'
       };
 
-      const response = await fetch(`http://172.18.100.33:8000/new-tool-requests/${requestId}/approve`, {
+      const response = await fetch(`http://localhost:8000/new-tool-requests/${requestId}/approve`, {
         method: 'PUT',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(requestBody),
       });
 
@@ -39,7 +40,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
       });
 
       const updatedRequest = await response.json();
-      const newRequests = pendingRequests.map(req => 
+      const newRequests = pendingRequests.map(req =>
         req.id === requestId ? updatedRequest : req
       );
       onRequestsChange(newRequests);
@@ -60,11 +61,11 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
         status: 'rejected'
       };
 
-      const response = await fetch(`http://172.18.100.33:8000/new-tool-requests/${requestId}/reject`, {
+      const response = await fetch(`http://localhost:8000/new-tool-requests/${requestId}/reject`, {
         method: 'PUT',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(requestBody),
       });
 
@@ -79,7 +80,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
       });
 
       const updatedRequest = await response.json();
-      const newRequests = pendingRequests.map(req => 
+      const newRequests = pendingRequests.map(req =>
         req.id === requestId ? updatedRequest : req
       );
       onRequestsChange(newRequests);
@@ -102,19 +103,19 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
     }
 
     const doc = new jsPDF('l', 'mm', 'a4'); // landscape orientation
-    
+
     // Add title
     doc.setFontSize(16);
     doc.text('Tool Requests Report', 14, 15);
-    
+
     // Add generation date and date range
     doc.setFontSize(10);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 25);
-    
+
     if (dateRange[0] && dateRange[1]) {
       doc.text(`Date Range: ${dateRange[0].format('DD/MM/YYYY')} - ${dateRange[1].format('DD/MM/YYYY')}`, 14, 30);
     }
-    
+
     // Prepare table data
     const tableData = filteredRequests.map(record => [
       record.Item_Description || '',
@@ -136,17 +137,17 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
     // Add table using autoTable
     autoTable(doc, {
       head: [[
-        'Tool Description', 'Range', 'ID Code', 'Make', 'Qty', 'Location', 
-        'Project #', 'Project Details', 'Supervisor', 'Sup. ID', 
+        'Tool Description', 'Range', 'ID Code', 'Make', 'Qty', 'Location',
+        'Project #', 'Project Details', 'Supervisor', 'Sup. ID',
         'Request Date', 'Response Date', 'Officer', 'Status'
       ]],
       body: tableData,
       startY: dateRange[0] && dateRange[1] ? 40 : 35,
-      styles: { 
+      styles: {
         fontSize: 8,
         cellPadding: 2
       },
-      headStyles: { 
+      headStyles: {
         fillColor: [66, 139, 202],
         textColor: 255,
         fontSize: 8,
@@ -173,11 +174,11 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
     });
 
     // Save the PDF
-    const dateRangeText = dateRange[0] && dateRange[1] 
+    const dateRangeText = dateRange[0] && dateRange[1]
       ? `_${dateRange[0].format('DDMMYYYY')}_to_${dateRange[1].format('DDMMYYYY')}`
       : '';
     doc.save(`tool_requests${dateRangeText}_${new Date().toISOString().split('T')[0]}.pdf`);
-    
+
     notification.success({
       message: 'PDF Downloaded',
       description: 'Tool requests report has been downloaded successfully.',
@@ -187,23 +188,23 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
   // Filter requests based on date range
   const filteredRequests = pendingRequests.filter(request => {
     if (!dateRange || !dateRange[0] || !dateRange[1]) return true;
-    
+
     const requestDate = dayjs(request.request_date);
-    return requestDate.isAfter(dateRange[0].startOf('day')) && 
-           requestDate.isBefore(dateRange[1].endOf('day'));
+    return requestDate.isAfter(dateRange[0].startOf('day')) &&
+      requestDate.isBefore(dateRange[1].endOf('day'));
   });
 
   const handleDateRangeChange = (dates) => {
     setDateRange(dates);
-    
+
     // Check if dates are selected and no data is available
     if (dates && dates[0] && dates[1]) {
       const filteredData = pendingRequests.filter(request => {
         const requestDate = dayjs(request.request_date);
-        return requestDate.isAfter(dates[0].startOf('day')) && 
-               requestDate.isBefore(dates[1].endOf('day'));
+        return requestDate.isAfter(dates[0].startOf('day')) &&
+          requestDate.isBefore(dates[1].endOf('day'));
       });
-      
+
       if (filteredData.length === 0) {
         Modal.warning({
           title: 'No Data Available',
@@ -294,7 +295,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
         <div style={{ fontSize: '12px' }}>
           <div>{new Date(date).toLocaleDateString()}</div>
           <div style={{ color: '#666' }}>
-            {new Date(date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            {new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
       ),
@@ -309,7 +310,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
           <div style={{ fontSize: '12px' }}>
             <div>{new Date(date).toLocaleDateString()}</div>
             <div style={{ color: '#666' }}>
-              {new Date(date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              {new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
         ) : (
@@ -338,11 +339,11 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
       width: 90,
       align: 'center',
       render: (_, record) => (
-        <Tag 
+        <Tag
           color={
             record.status === 'approved' ? 'success' :
-            record.status === 'rejected' ? 'error' :
-            'warning'
+              record.status === 'rejected' ? 'error' :
+                'warning'
           }
         >
           {record.status.toUpperCase()}
@@ -400,7 +401,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
             </Tag>
           )}
         </div>
-        
+
         <Space>
           <RangePicker
             value={dateRange}
@@ -409,7 +410,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
             format="DD/MM/YYYY"
             style={{ width: 240 }}
           />
-          
+
           <Tooltip title="Download PDF Report">
             <Button
               type="primary"
@@ -425,10 +426,10 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
 
       {/* Table or Empty State */}
       {filteredRequests.length === 0 ? (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           height: '400px',
           backgroundColor: '#fafafa',
           borderRadius: '6px',

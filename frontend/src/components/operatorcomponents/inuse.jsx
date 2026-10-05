@@ -12,6 +12,7 @@ import {
 import {
   ClockCircleOutlined
 } from '@ant-design/icons';
+import { getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -27,16 +28,13 @@ const InUse = ({ currentUserInfo, tools, onToolReturn, onIssueReport }) => {
 
     try {
       setLoading(true);
-      
-      const headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      };
-      
+
+      const authHeaders = getAuthHeaders();
+
       const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-        fetch(`http://172.18.100.33:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}&status=approved&collected=yes&returned=no`),
-        fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`),
-        fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}`)
+        fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}&status=approved&collected=yes&returned=no`, { headers: authHeaders }),
+        fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+        fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
       ]);
 
       if (!requestsResponse.ok || !returnsResponse.ok || !issuesResponse.ok) {
@@ -187,7 +185,7 @@ const InUse = ({ currentUserInfo, tools, onToolReturn, onIssueReport }) => {
             onClick={() => {
               // Log the full record for debugging
               console.log('Full record data:', record);
-              
+
               // Create a complete tool data object with all necessary information
               const toolData = {
                 ...record,  // Include all record data
@@ -198,17 +196,17 @@ const InUse = ({ currentUserInfo, tools, onToolReturn, onIssueReport }) => {
                 unique_request_id: record.unique_request_id,
                 toolDetails: record.toolDetails || {}
               };
-              
+
               // Log the tool data being passed
               console.log('Reporting issue for tool:', toolData);
-              
+
               // Verify unique_request_id is present
               if (!toolData.unique_request_id) {
                 console.error('Missing unique_request_id in tool data:', toolData);
                 message.error('Error: Missing unique request ID for the tool');
                 return;
               }
-              
+
               onIssueReport(toolData);
               // Refresh data after issue report
               fetchInUseTools();
@@ -234,10 +232,10 @@ const InUse = ({ currentUserInfo, tools, onToolReturn, onIssueReport }) => {
 
   return (
     <>
-      <Card 
-        hoverable 
+      <Card
+        hoverable
         onClick={handleCardClick}
-        style={{ 
+        style={{
           borderRadius: '10px',
           background: 'linear-gradient(135deg, #ffffff 0%, #fff7e6 100%)',
           border: '1px solid rgba(250, 140, 22, 0.2)',

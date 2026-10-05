@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 from db import SessionLocal
 from models import ToolsList
 from schemas import ToolsListCreate, ToolsList as ToolsListSchema, ToolsListUpdate
 from sqlalchemy.exc import SQLAlchemyError
-from fastapi.responses import JSONResponse
+from auth import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # Dependency to get DB session
@@ -213,10 +214,6 @@ def delete_tool(sl_no: int, db: Session = Depends(get_db)):
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-from fastapi import Body
-
 
 @router.post("/tools/{sl_no}/status", response_model=ToolsListSchema, tags=["Tools"])
 def update_tool_status(sl_no: int, status: str = Body(..., embed=True), db: Session = Depends(get_db)):

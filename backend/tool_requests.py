@@ -12,7 +12,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 import uuid
 
-router = APIRouter()
+from auth import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 @router.post("/tool-requests", response_model=ToolRequestResponse)
 def create_tool_request(request: ToolRequestCreate, db: Session = Depends(get_db)):

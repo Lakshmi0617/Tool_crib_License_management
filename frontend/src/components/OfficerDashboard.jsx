@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
+import {
   Layout,
   Table,
   Input,
@@ -26,6 +26,7 @@ import {
 } from 'antd';
 import {
   SearchOutlined,
+  KeyOutlined,
   LogoutOutlined,
   ToolOutlined,
   ExclamationCircleOutlined,
@@ -53,6 +54,7 @@ import cmtisLogo from '../assets/cmtis.png';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../styles/Dashboard.css';
+import { getAuthHeaders } from '../config';
 import PendingRequestsDrawer from './officer components/PendingRequestsDrawer';
 import AddUserDrawer from './officer components/AddUserDrawer';
 import ItemIssuesHistory from './officer components/itemissueshistory';
@@ -62,7 +64,7 @@ const { Header, Content, Sider } = Layout;
 const { Option } = Select;
 const { Title, Text } = Typography;
 
-const OfficerDashboard = ({ userInfo, onLogout }) => {
+const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
   const navigate = useNavigate();
   const [tools, setTools] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,7 +124,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
   const handleSave = async (record) => {
     try {
       const row = await form.validateFields();
-      const response = await fetch(`http://172.18.100.33:8000/api/tools/${record.id}`, {
+      const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -160,8 +162,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
     children,
     ...restProps
   }) => {
-    const inputNode = inputType === 'number' ? 
-      <InputNumber min={0} /> : 
+    const inputNode = inputType === 'number' ?
+      <InputNumber min={0} /> :
       <Input />;
 
     return editing ? (
@@ -213,36 +215,15 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
   const fetchTools = async () => {
     try {
       setLoading(true);
-      // Fetch tools, requests, returns and issues in parallel
+      const authHeaders = getAuthHeaders({
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      });
       const [toolsResponse, requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-        fetch('http://172.18.100.33:8000/api/tools', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Accept': 'application/json'
-          }
-        }),
-        fetch('http://172.18.100.33:8000/api/tool-requests/all', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Accept': 'application/json'
-          }
-        }),
-        fetch('http://172.18.100.33:8000/api/tool-returns/all', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Accept': 'application/json'
-          }
-        }),
-        fetch('http://172.18.100.33:8000/api/tool-issues/all', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Accept': 'application/json'
-          }
-        })
+        fetch('http://localhost:8000/api/tools', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tool-requests/all', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tool-returns/all', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders })
       ]);
 
       // Check if any response failed
@@ -266,9 +247,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       ]);
 
       // Get active tool requests (approved and collected but not returned)
-      const activeRequests = requestsData.filter(req => 
-        req.status === 'approved' && 
-        req.collected === 'yes' && 
+      const activeRequests = requestsData.filter(req =>
+        req.status === 'approved' &&
+        req.collected === 'yes' &&
         req.returned !== 'yes'
       );
 
@@ -306,7 +287,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       const toolsInUseCount = activeRequests.reduce((acc, request) => {
         const toolId = request.tool_sl_no;
         const requestKey = `${toolId}-${request.operator_id}`;
-        
+
         // Skip if tool has been returned or has approved issues
         if (returnedTools.has(requestKey) || toolsWithIssues.has(requestKey)) {
           return acc;
@@ -324,7 +305,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
         const activeUsers = requestsByTool[tool.Sl_no] || [];
         const inUseCount = toolsInUseCount[tool.Sl_no] || 0;
         const totalQuantity = parseInt(tool.Quantity) || 0;
-        
+
         // Determine status based on quantity and usage
         let status;
         if (totalQuantity === 0) {
@@ -355,7 +336,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       const stats = mappedTools.reduce((acc, tool) => {
         // Total is sum of all quantities
         acc.total += tool.quantity;
-        
+
         if (tool.status === 'maintenance') {
           acc.maintenance += 1;
         } else if (tool.status === 'in_use') {
@@ -383,22 +364,14 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
   const fetchIssues = async () => {
     try {
       // setLoading(true);
-      
+
+      const authHeaders = getAuthHeaders({
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      });
       const [issuesResponse, toolsResponse] = await Promise.all([
-        fetch('http://172.18.100.33:8000/api/tool-issues/all', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Accept': 'application/json'
-          }
-        }),
-        fetch('http://172.18.100.33:8000/api/tools', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-            'Accept': 'application/json'
-          }
-        })
+        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders }),
+        fetch('http://localhost:8000/api/tools', { headers: authHeaders })
       ]);
 
       if (!issuesResponse.ok || !toolsResponse.ok) {
@@ -421,21 +394,21 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       }));
 
       // Filter pending issues (no officer action yet)
-      const pendingIssues = issuesWithTools.filter(issue => 
+      const pendingIssues = issuesWithTools.filter(issue =>
         issue.officer_status === 'pending' || !issue.officer_status
       );
-      
+
       // Filter supervisor approved issues (has officer action)
-      const supervisorApprovedIssues = issuesWithTools.filter(issue => 
+      const supervisorApprovedIssues = issuesWithTools.filter(issue =>
         issue.officer_status === 'approved' || issue.officer_status === 'rejected'
       );
 
       // Sort issues by report date in descending order
-      const sortedPendingIssues = pendingIssues.sort((a, b) => 
+      const sortedPendingIssues = pendingIssues.sort((a, b) =>
         new Date(b.report_date) - new Date(a.report_date)
       );
 
-      const sortedSupervisorApprovedIssues = supervisorApprovedIssues.sort((a, b) => 
+      const sortedSupervisorApprovedIssues = supervisorApprovedIssues.sort((a, b) =>
         new Date(b.report_date) - new Date(a.report_date)
       );
 
@@ -454,7 +427,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
   // Add function to fetch pending tool requests
   const fetchPendingToolRequests = async () => {
     try {
-      const response = await fetch('http://172.18.100.33:8000/new-tool-requests/all-requests');
+      const response = await fetch('http://localhost:8000/new-tool-requests/all-requests', { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch requests');
       const data = await response.json();
       setPendingToolRequests(data);
@@ -468,7 +441,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
     // Check for authentication and user info
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    
+
     if (!token || !storedUser) {
       navigate('/login');
       return;
@@ -481,7 +454,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
         return;
       }
       setCurrentUserInfo(parsedUser);
-      
+
       // Initial data fetch
       const fetchInitialData = async () => {
         try {
@@ -542,12 +515,11 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
         officer_name: currentUserInfo?.employee_name
       });
 
-      const response = await fetch(`http://172.18.100.33:8000/api/tool-issues/${issueId}/officer-action`, {
+      const response = await fetch(`http://localhost:8000/api/tool-issues/${issueId}/officer-action`, {
         method: 'PUT',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        }),
         body: JSON.stringify({
           action: action,
           officer_id: currentUserInfo?.employee_id,
@@ -567,16 +539,16 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       console.log('Success response:', updatedIssue);
 
       message.success(`Issue ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
-      
+
       // Update the local state
       setPendingIssues(prev => prev.filter(issue => issue.id !== issueId));
-      setSupervisorApprovedIssues(prev => [...prev, updatedIssue].sort((a, b) => 
+      setSupervisorApprovedIssues(prev => [...prev, updatedIssue].sort((a, b) =>
         new Date(b.report_date) - new Date(a.report_date)
       ));
-      
+
       // Fetch updated data to ensure consistency
       fetchIssues();
-      
+
     } catch (error) {
       console.error('Error updating issue status:', error);
       message.error(error.message || 'Failed to update issue status');
@@ -617,14 +589,14 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       cancelText: 'No',
       onOk: async () => {
         try {
-          const response = await fetch(`http://172.18.100.33:8000/api/tools/${record.id}`, {
+          const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
             method: 'DELETE',
           });
-          
+
           if (!response.ok) {
             throw new Error('Failed to delete tool');
           }
-          
+
           message.success('Tool deleted successfully');
           fetchTools(); // Refresh the tools list
         } catch (error) {
@@ -663,12 +635,12 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
             <Input />
           </Form.Item>
         ) : (
-          <Button 
-            type="link" 
+          <Button
+            type="link"
             onClick={() => setSelectedItemDescription(text)}
-            style={{ 
-              padding: 0, 
-              height: 'auto', 
+            style={{
+              padding: 0,
+              height: 'auto',
               lineHeight: 'inherit',
               color: '#1e88e5',
               fontWeight: 500,
@@ -721,9 +693,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
             <InputNumber min={0} />
           </Form.Item>
         ) : (
-          <span style={{ 
+          <span style={{
             color: text > 0 ? '#2e7d32' : '#c62828',
-            fontWeight: 500 
+            fontWeight: 500
           }}>
             {text}
           </span>
@@ -890,8 +862,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       render: (_, record) => (
         <Tag color={
           record.severity === 'high' ? 'red' :
-          record.severity === 'medium' ? 'orange' :
-          'green'
+            record.severity === 'medium' ? 'orange' :
+              'green'
         }>
           {record.severity.toUpperCase()}
         </Tag>
@@ -923,7 +895,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       render: (_, record) => {
         let color = 'default';
         let text = record.officer_status || 'Pending';
-        
+
         switch (text.toLowerCase()) {
           case 'approved':
             color = 'success';
@@ -937,7 +909,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
           default:
             color = 'default';
         }
-        
+
         return (
           <Tag color={color}>
             {text.toUpperCase()}
@@ -1028,8 +1000,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       render: (severity) => (
         <Tag color={
           severity === 'high' ? 'red' :
-          severity === 'medium' ? 'orange' :
-          'green'
+            severity === 'medium' ? 'orange' :
+              'green'
         }>
           {severity.toUpperCase()}
         </Tag>
@@ -1077,13 +1049,13 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
   // Update filteredTools to remove range filter
   const filteredTools = useMemo(() => {
     return tools.filter(tool => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         (tool.name && tool.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (tool.range && tool.range.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (tool.identificationCode && tool.identificationCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (tool.make && tool.make.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchesCategory = selectedCategory === 'all' || 
+      const matchesCategory = selectedCategory === 'all' ||
         (selectedCategory === tool.name);
 
       const matchesStatus = activeTab === 'all' || tool.status === activeTab;
@@ -1206,21 +1178,21 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
         fetchIssues(),
         // Fetch pending issues
         (async () => {
-          const response = await fetch('http://172.18.100.33:8000/api/tool-issues/pending');
+          const response = await fetch('http://localhost:8000/api/tool-issues/pending', { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch pending issues');
           const data = await response.json();
           setPendingIssues(data);
         })(),
         // Fetch supervisor approved issues
         (async () => {
-          const response = await fetch('http://172.18.100.33:8000/api/tool-issues/supervisor-approved');
+          const response = await fetch('http://localhost:8000/api/tool-issues/supervisor-approved', { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch supervisor approved issues');
           const data = await response.json();
           setSupervisorApprovedIssues(data);
         })(),
         // Fetch pending tool requests
         (async () => {
-          const response = await fetch('http://172.18.100.33:8000/new-tool-requests/pending');
+          const response = await fetch('http://localhost:8000/new-tool-requests/pending', { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch pending requests');
           const data = await response.json();
           setPendingToolRequests(data);
@@ -1240,14 +1212,14 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        await fetch(`http://172.18.100.33:8000/logout?employee_id=${user.employee_id}`, {
+        await fetch(`http://localhost:8000/logout?employee_id=${user.employee_id}`, {
           method: 'POST',
-          headers: {
+          headers: getAuthHeaders({
             'Content-Type': 'application/json',
-          }
+          })
         });
       }
-      
+
       // Clear local storage and call onLogout
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -1276,6 +1248,19 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       >
         Add User
       </Button>
+      {onOpenLicenseModal && (
+        <Button
+          type="primary"
+          icon={<KeyOutlined />}
+          onClick={onOpenLicenseModal}
+          style={{
+            background: '#722ed1',
+            borderColor: '#722ed1'
+          }}
+        >
+          License Key
+        </Button>
+      )}
       <Space>
         <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
         <Text strong style={{ color: '#262626' }}>{currentUserInfo?.employee_name || 'Officer'}</Text>
@@ -1356,7 +1341,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
         setSelectedMenu('item_issues');
       }
     },
-    
+
 
     {
       key: 'pending_requests',
@@ -1442,9 +1427,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        collapsible 
-        collapsed={collapsed} 
+      <Sider
+        collapsible
+        collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
           background: '#1e88e5',
@@ -1458,7 +1443,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
         }}
         width={220}
       >
-        <div style={{ 
+        <div style={{
           padding: '20px',
           display: 'flex',
           alignItems: 'center',
@@ -1466,20 +1451,20 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
           borderBottom: '1px solid rgba(255,255,255,0.1)',
           background: '#1e88e5'
         }}>
-          <img 
-            src={cmtisLogo} 
-            alt="CMTIS Logo" 
-            style={{ 
+          <img
+            src={cmtisLogo}
+            alt="CMTIS Logo"
+            style={{
               height: '40px',
               filter: 'brightness(0) invert(1)'
-            }} 
+            }}
           />
         </div>
 
         <Menu
           mode="inline"
           selectedKeys={[selectedMenu]}
-          style={{ 
+          style={{
             borderRight: 0,
             background: '#1e88e5',
             color: '#ffffff',
@@ -1490,8 +1475,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
       </Sider>
 
       <Layout style={{ marginLeft: 220 }}>
-        <Header style={{ 
-          background: '#ffffff', 
+        <Header style={{
+          background: '#ffffff',
           padding: '0 24px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           display: 'flex',
@@ -1504,11 +1489,11 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
           </Space>
           <Space>
             <Space style={{ marginRight: 24 }}>
-              <Avatar 
-                style={{ 
+              <Avatar
+                style={{
                   backgroundColor: '#4096ff',
-                  verticalAlign: 'middle' 
-                }} 
+                  verticalAlign: 'middle'
+                }}
                 size="large"
                 icon={<UserOutlined />}
               />
@@ -1516,9 +1501,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
                 {currentUserInfo?.employee_name || 'Officer'}
               </span>
             </Space>
-            <Button 
-              type="primary" 
-              icon={<LogoutOutlined />} 
+            <Button
+              type="primary"
+              icon={<LogoutOutlined />}
               onClick={handleLogout}
               danger
               style={{
@@ -1536,9 +1521,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
               {/* Tool Statistics */}
               <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)',
                       border: '1px solid rgba(30, 136, 229, 0.2)',
@@ -1578,9 +1563,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #f6fbf6 100%)',
                       border: '1px solid rgba(46, 125, 50, 0.2)',
@@ -1620,9 +1605,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #fff9f0 100%)',
                       border: '1px solid rgba(239, 108, 0, 0.2)',
@@ -1662,9 +1647,9 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                  <Card 
-                    hoverable 
-                    style={{ 
+                  <Card
+                    hoverable
+                    style={{
                       borderRadius: '10px',
                       background: 'linear-gradient(135deg, #ffffff 0%, #fff1f1 100%)',
                       border: '1px solid rgba(198, 40, 40, 0.2)',
@@ -1706,8 +1691,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
               </Row>
 
               {/* Tools Management Section */}
-              <Card 
-                style={{ 
+              <Card
+                style={{
                   borderRadius: '12px',
                   background: '#fff',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
@@ -1720,7 +1705,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
                       allowClear
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      style={{ 
+                      style={{
                         width: 300,
                         '.ant-input': {
                           borderRadius: '8px'
@@ -1759,8 +1744,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
                   </Button>
                 </Space>
 
-                <Tabs 
-                  activeKey={activeTab} 
+                <Tabs
+                  activeKey={activeTab}
                   onChange={handleTabChange}
                   items={tabItems}
                   style={{
@@ -1783,8 +1768,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
                 />
 
                 {selectedItemDescription && (
-                  <Tag 
-                    closable 
+                  <Tag
+                    closable
                     onClose={() => setSelectedItemDescription(null)}
                     color="blue"
                     style={{ marginBottom: 16 }}
@@ -1825,11 +1810,11 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
               </Card>
             </>
           )}
-          
+
           {/* Issues History Section */}
           {selectedMenu === 'issues_history' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
@@ -1841,8 +1826,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
 
           {/* Officer History Section */}
           {selectedMenu === 'officer_history' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
@@ -1854,8 +1839,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
 
           {/* Item Issues Section */}
           {selectedMenu === 'item_issues' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
@@ -1867,8 +1852,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
 
           {/* Pending Requests Section */}
           {selectedMenu === 'pending_requests' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
@@ -1899,7 +1884,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
               columns={supervisorApprovedIssueColumns}
               dataSource={supervisorApprovedIssues}
               rowKey="id"
-              pagination={{ 
+              pagination={{
                 pageSize: 5,
                 showTotal: (total) => `Total ${total} issues`
               }}
@@ -1930,8 +1915,8 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
           <SupervisorApprovedIssuesModal />
 
           {selectedMenu === 'add_user' && (
-            <Card 
-              style={{ 
+            <Card
+              style={{
                 borderRadius: '12px',
                 background: '#fff',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
@@ -1940,6 +1925,7 @@ const OfficerDashboard = ({ userInfo, onLogout }) => {
               <AddUserDrawer
                 visible={selectedMenu === 'add_user'}
                 onClose={() => setSelectedMenu('dashboard')}
+                userInfo={currentUserInfo}
               />
             </Card>
           )}

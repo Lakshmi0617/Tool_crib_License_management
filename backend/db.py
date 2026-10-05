@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from pony.orm import Database, db_session
 from sqlalchemy.pool import QueuePool
@@ -9,15 +9,21 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if present
+load_dotenv()
+
 # Database configuration
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_USER = "postgres"
-DB_PASSWORD = "12345678"
-DB_NAME = "postgres"
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "root1234")
+DB_NAME = os.getenv("DB_NAME", "ToolCrib_v1")
 
 # SQLAlchemy setup with optimized connection pooling
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 def create_db_engine(retries=5, delay=2):
     for attempt in range(retries):
@@ -79,7 +85,7 @@ def get_db():
     db = SessionLocal()
     try:
         # Test the connection before returning
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         yield db
     except Exception as e:
         logger.error(f"Database connection error: {str(e)}")
@@ -92,11 +98,11 @@ def setup_database():
     try:
         # Create schema if it doesn't exist
         with engine.begin() as connection:
-            connection.execute("CREATE SCHEMA IF NOT EXISTS toolcrib")
+            connection.execute(text("CREATE SCHEMA IF NOT EXISTS toolcrib"))
             logger.info("Schema 'toolcrib' created or verified")
 
         # Import all models to ensure they are registered with SQLAlchemy
-        from models import User, ToolsList, ToolRequest, ToolsReturned, ToolIssue, NewToolRequest, ActiveSession
+        from models import User, ToolsList, ToolRequest, ToolsReturned, ToolIssue, NewToolRequest, ActiveSession, Company
 
         # Drop all tables first (optional - uncomment if needed)
         # Base.metadata.drop_all(bind=engine)
@@ -104,6 +110,14 @@ def setup_database():
         # Create all tables with SQLAlchemy
         Base.metadata.create_all(bind=engine)
         logger.info("SQLAlchemy tables created successfully")
+
+        # Migrate missing columns for license_info and companies if tables already existed
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE toolcrib.license_info ADD COLUMN IF NOT EXISTS sha256_hash VARCHAR;"))
+            connection.execute(text("ALTER TABLE toolcrib.license_info ADD COLUMN IF NOT EXISTS signature_ed25519 VARCHAR;"))
+            connection.execute(text("ALTER TABLE toolcrib.license_info ADD COLUMN IF NOT EXISTS company_id INTEGER;"))
+            connection.execute(text("ALTER TABLE toolcrib.companies ADD COLUMN IF NOT EXISTS project_name VARCHAR;"))
+            logger.info("Database table columns migrated successfully")
     except Exception as e:
         logger.error(f"Error setting up database: {str(e)}")
         raise

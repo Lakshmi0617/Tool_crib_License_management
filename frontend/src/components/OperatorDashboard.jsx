@@ -58,6 +58,7 @@ import TotalToolsUsed from './operatorcomponents/Totaltoolsused';
 import InUse from './operatorcomponents/inuse';
 import ReturnedTools from './operatorcomponents/Returnedtools';
 import ReportedIssues from './operatorcomponents/Reportedissues';
+import { getAuthHeaders } from '../config';
 
 const { Header, Content, Sider } = Layout;
 const { Option } = Select;
@@ -130,7 +131,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       key: 'all',
       label: 'All Tools',
     },
-    
+
   ];
 
   // Update fetchData function
@@ -138,7 +139,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
     try {
       const token = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
-      
+
       if (!token || !storedUser) {
         message.error('Session expired. Please login again.');
         navigate('/login');
@@ -161,7 +162,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       }
 
       // First fetch tools
-      const toolsResponse = await fetch('http://172.18.100.33:8000/api/tools', {
+      const toolsResponse = await fetch('http://localhost:8000/api/tools', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -181,7 +182,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       }
 
       const toolsData = await toolsResponse.json();
-      
+
       // Map backend data to frontend structure
       const mappedTools = toolsData.map(tool => ({
         id: tool.Sl_no,
@@ -196,11 +197,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         gauge: tool.Gauge || '',
         currentUser: tool.current_user || null
       }));
-      
+
       setTools(mappedTools);
 
       // Then fetch requests for this specific operator
-      const requestsResponse = await fetch(`http://172.18.100.33:8000/api/tool-requests?operator_id=${parsedUser.employee_id}`, {
+      const requestsResponse = await fetch(`http://localhost:8000/api/tool-requests?operator_id=${parsedUser.employee_id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -220,11 +221,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       }
 
       const requestsData = await requestsResponse.json();
-      
+
       // Filter requests to show in Supervisor Responses only if approved but not collected
       const supervisorResponses = requestsData
-        .filter(req => 
-          req.status === 'approved' && 
+        .filter(req =>
+          req.status === 'approved' &&
           (!req.collected || req.collected === 'no')
         )
         .map(req => ({
@@ -234,18 +235,18 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
 
       // Filter requests to show in Total Tools Used only if collected
       const totalToolsUsed = requestsData
-        .filter(req => 
-          req.status === 'approved' && 
+        .filter(req =>
+          req.status === 'approved' &&
           req.collected === 'yes'
         )
         .map(req => ({
           ...req,
           tool_details: mappedTools.find(t => t.id === req.tool_sl_no) || {}
         }));
-      
+
       setSupervisorResponses(supervisorResponses);
       setTotalToolsUsed(totalToolsUsed);
-      
+
       // Update currentUserInfo if needed
       if (!currentUserInfo) {
         setCurrentUserInfo(parsedUser);
@@ -274,10 +275,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         fetchTools(),
         // Fetch operator's in-use tools
         (async () => {
+          const authHeaders = getAuthHeaders();
           const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-            fetch(`http://172.18.100.33:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}&status=approved&collected=yes&returned=no`),
-            fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`),
-            fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}`)
+            fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}&status=approved&collected=yes&returned=no`, { headers: authHeaders }),
+            fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
           ]);
 
           const [requestsData, returnsData, issuesData] = await Promise.all([
@@ -303,7 +305,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
             .filter(req => {
               // First check if request is approved and collected
               const isCollected = req.status === 'approved' && req.collected === 'yes';
-              
+
               if (!isCollected) return false;
 
               // Check if tool has been marked as returned in the request
@@ -319,10 +321,10 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                   const requestDate = new Date(req.request_date);
                   const issueDate = new Date(issue.report_date);
                   const approvalDate = issue.officer_approval_date ? new Date(issue.officer_approval_date) : null;
-                  
+
                   // Use the later of report_date or officer_approval_date
                   const effectiveIssueDate = approvalDate && approvalDate > issueDate ? approvalDate : issueDate;
-                  
+
                   return requestDate <= effectiveIssueDate;
                 }
                 return false;
@@ -335,16 +337,17 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         })(),
         // Fetch operator's tool returns
         (async () => {
-          const response = await fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`);
+          const response = await fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch returns');
           const data = await response.json();
           setReturns(data);
         })(),
         // Fetch operator's tool usage history
         (async () => {
+          const authHeaders = getAuthHeaders();
           const [requestsResponse, returnsResponse] = await Promise.all([
-            fetch(`http://172.18.100.33:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`),
-            fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`)
+            fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders })
           ]);
 
           const [requestsData, returnsData] = await Promise.all([
@@ -368,7 +371,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         })(),
         // Fetch operator's reported issues
         (async () => {
-          const response = await fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}`);
+          const response = await fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch issues');
           const data = await response.json();
           setIssues(data);
@@ -387,12 +390,12 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
   const fetchTools = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://172.18.100.33:8000/api/tools');
+      const response = await fetch('http://localhost:8000/api/tools', { headers: getAuthHeaders() });
       if (!response.ok) {
         throw new Error('Failed to fetch tools');
       }
       const data = await response.json();
-      
+
       // Map backend data to frontend structure
       const mappedTools = data.map(tool => ({
         id: tool.Sl_no,
@@ -410,7 +413,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
 
       // Calculate total tools (sum of Item Description × Quantity)
       const totalTools = mappedTools.reduce((acc, tool) => acc + (tool.quantity || 0), 0);
-      
+
       // Calculate available tools
       const availableTools = mappedTools.reduce((acc, tool) => {
         if (tool.status === 'available') {
@@ -418,7 +421,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         }
         return acc;
       }, 0);
-      
+
       setTools(mappedTools);
       setToolStats({
         total: totalTools,
@@ -469,7 +472,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
 
   const checkExistingIssues = async (toolSlNo) => {
     try {
-      const response = await fetch(`http://172.18.100.33:8000/api/tool-issues/tool/${toolSlNo}`);
+      const response = await fetch(`http://localhost:8000/api/tool-issues/tool/${toolSlNo}`, { headers: getAuthHeaders() });
       if (!response.ok) {
         throw new Error('Failed to check existing issues');
       }
@@ -523,19 +526,19 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       // Log the request payload for debugging
       console.log('Issue Report Payload:', payload);
 
-      const response = await fetch('http://172.18.100.33:8000/api/tool-issues', {
+      const response = await fetch('http://localhost:8000/api/tool-issues', {
         method: 'POST',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      
+
       // Log the response for debugging
       console.log('Server Response:', data);
-      
+
       if (!response.ok) {
         if (data.detail) {
           message.error(data.detail);
@@ -552,7 +555,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       setIsIssueModalVisible(false);
       issueForm.resetFields();
       setSelectedTool(null);  // Clear the selected tool
-      
+
       // Refresh data
       await Promise.all([
         fetchTools(),
@@ -593,14 +596,14 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
   // Update the filteredTools logic to be more effective
   const filteredTools = useMemo(() => {
     if (!tools.length) return [];
-    
+
     // If no search query, return empty array
     if (!searchQuery) {
       return [];
     }
-    
+
     const searchLower = searchQuery.toLowerCase().trim();
-    
+
     return tools.filter(tool => {
       // Enhanced search matching with more precise field matching
       const searchableFields = [
@@ -612,7 +615,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       ];
 
       // Check if any field contains the search term
-      const matches = searchableFields.some(field => 
+      const matches = searchableFields.some(field =>
         field.value && field.value.toLowerCase().includes(searchLower)
       );
 
@@ -641,12 +644,12 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       key: 'name',
       width: 180,
       render: (name) => (
-        <Button 
-          type="link" 
+        <Button
+          type="link"
           onClick={() => setSelectedItemDescription(name)}
-          style={{ 
-            padding: 0, 
-            height: 'auto', 
+          style={{
+            padding: 0,
+            height: 'auto',
             lineHeight: 'inherit',
             color: '#1e88e5',
             fontWeight: 500,
@@ -684,7 +687,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       key: 'status',
       width: 100,
       render: (status) => (
-        <Text style={{ 
+        <Text style={{
           color: status === 'Not Available' ? '#ff4d4f' : '#52c41a',
           fontWeight: 500
         }}>
@@ -713,17 +716,18 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
   // Function to handle KPI card clicks - simplified to only handle non-total cards
   const handleCardClick = async (category) => {
     if (category === 'total') return; // Now handled by TotalToolsUsed component
-    
+
     if (!currentUserInfo) return;
 
     try {
       let data = [];
       switch (category) {
         case 'in_use': {
+          const authHeaders = getAuthHeaders();
           const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-            fetch(`http://172.18.100.33:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`),
-            fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`),
-            fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}`)
+            fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
           ]);
 
           const [requestsData, returnsData, issuesData] = await Promise.all([
@@ -749,12 +753,12 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           break;
         }
         case 'returned':
-          const returnedResponse = await fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`);
+          const returnedResponse = await fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!returnedResponse.ok) throw new Error('Failed to fetch returned data');
           data = await returnedResponse.json();
           break;
         case 'issues':
-          const issuesResponse = await fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}`);
+          const issuesResponse = await fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!issuesResponse.ok) throw new Error('Failed to fetch issues data');
           data = await issuesResponse.json();
           break;
@@ -779,11 +783,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       }
 
       // Create the tool return record
-      const returnResponse = await fetch('http://172.18.100.33:8000/api/tool-returns', {
+      const returnResponse = await fetch('http://localhost:8000/api/tool-returns', {
         method: 'POST',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify({
           tool_sl_no: selectedTool.tool_sl_no,
           operator_id: currentUserInfo.employee_id,
@@ -807,17 +811,18 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       message.success('Tool submitted successfully');
       setIsSubmitModalVisible(false);
       setSelectedTool(null);
-      
+
       // Refresh all relevant data
       await Promise.all([
         fetchTools(),
         // Refresh the in-use tools data
         (async () => {
           if (currentUserInfo?.employee_id) {
+            const authHeaders = getAuthHeaders();
             const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-              fetch(`http://172.18.100.33:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`),
-              fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`),
-              fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}`)
+              fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+              fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+              fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
             ]);
 
             const [requestsData, returnsData, issuesData] = await Promise.all([
@@ -903,11 +908,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         return;
       }
 
-      const confirmResponse = await fetch(`http://172.18.100.33:8000/api/tool-requests/${response.id}/collect`, {
+      const confirmResponse = await fetch(`http://localhost:8000/api/tool-requests/${response.id}/collect`, {
         method: 'PUT',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        }
+        })
       });
 
       if (!confirmResponse.ok) {
@@ -916,11 +921,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       }
 
       message.success('Tool collected successfully');
-      
+
       // Remove from supervisor responses and add to total tools used
       setSupervisorResponses(prev => prev.filter(r => r.id !== response.id));
       setTotalToolsUsed(prev => [...prev, { ...response, collected: 'yes' }]);
-      
+
       // Refresh all data
       await fetchData();
     } catch (error) {
@@ -1031,8 +1036,84 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
   ];
 
   // Update the category details modal columns
-  const categoryColumns = selectedCategory === 'issues' 
+  const categoryColumns = selectedCategory === 'issues'
     ? [
+      {
+        title: 'Tool Details',
+        key: 'toolDetails',
+        width: 250,
+        render: (_, record) => {
+          const tool = tools.find(t => t.id === record.tool_sl_no);
+          return (
+            <Space direction="vertical" size={0}>
+              <Text strong>{tool?.name || 'Unknown Tool'}</Text>
+              <Text type="secondary">Serial No: {record.tool_sl_no}</Text>
+              <Text type="secondary">Range: {tool?.range || 'N/A'}</Text>
+              <Text type="secondary">ID Code: {tool?.identificationCode || 'N/A'}</Text>
+            </Space>
+          );
+        },
+      },
+      {
+        title: 'Purpose',
+        dataIndex: 'purpose',
+        key: 'purpose',
+        width: 150,
+        render: (purpose) => purpose || 'N/A'
+      },
+      {
+        title: 'Project Details',
+        dataIndex: 'project_details',
+        key: 'project_details',
+        width: 150,
+        render: (project_details) => project_details || 'N/A'
+      },
+      {
+        title: 'Issue Severity ',
+        dataIndex: 'severity',
+        key: 'severity',
+        width: 120,
+        render: (severity) => (
+          <Tag color={
+            (severity || '').toLowerCase() === 'high' ? 'red' :
+              (severity || '').toLowerCase() === 'medium' ? 'orange' :
+                'green'
+          }>
+            {(severity || 'N/A').toUpperCase()}
+          </Tag>
+        ),
+      },
+      {
+        title: 'Issue Category',
+        dataIndex: 'category',
+        key: 'category',
+        width: 120,
+        render: (category) => (
+          <Tag color={
+            (category || '').toLowerCase() === 'breakage' ? 'red' :
+              (category || '').toLowerCase() === 'calibration' ? 'blue' :
+                'gold'
+          }>
+            {(category || 'N/A').toUpperCase()}
+          </Tag>
+        ),
+      },
+      {
+        title: 'Issue Description',
+        dataIndex: 'description',
+        key: 'description',
+        width: 200,
+      },
+      {
+        title: 'Report Date',
+        dataIndex: 'report_date',
+        key: 'report_date',
+        width: 150,
+        render: (date) => date ? new Date(date).toLocaleString() : 'N/A',
+      },
+    ]
+    : selectedCategory === 'returned'
+      ? [
         {
           title: 'Tool Details',
           key: 'toolDetails',
@@ -1050,233 +1131,157 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           },
         },
         {
+          title: 'Request Date',
+          dataIndex: 'request_date',
+          key: 'request_date',
+          render: (date) => date ? new Date(date).toLocaleString() : 'N/A',
+        },
+        {
           title: 'Purpose',
           dataIndex: 'purpose',
           key: 'purpose',
-          width: 150,
-          render: (purpose) => purpose || 'N/A'
+          render: (purpose) => purpose || 'N/A',
         },
         {
-          title: 'Project Details',
+          title: 'Project',
           dataIndex: 'project_details',
           key: 'project_details',
-          width: 150,
-          render: (project_details) => project_details || 'N/A'
+          render: (project_details) => project_details || 'N/A',
         },
         {
-          title: 'Issue Severity ',
-          dataIndex: 'severity',
-          key: 'severity',
-          width: 120,
-          render: (severity) => (
-            <Tag color={
-              (severity || '').toLowerCase() === 'high' ? 'red' :
-              (severity || '').toLowerCase() === 'medium' ? 'orange' :
-              'green'
-            }>
-              {(severity || 'N/A').toUpperCase()}
+          title: 'Condition',
+          dataIndex: 'condition_on_return',
+          key: 'condition',
+          render: (condition) => condition || 'N/A',
+        },
+        {
+          title: 'Remarks',
+          dataIndex: 'remarks',
+          key: 'remarks',
+          render: (remarks) => remarks || 'N/A',
+        },
+        {
+          title: 'Status',
+          key: 'status',
+          render: (_, record) => (
+            <Tag color={record.status === 'collected' ? 'success' : 'processing'}>
+              {(record.status || 'PENDING').toUpperCase()}
             </Tag>
           ),
         },
         {
-          title: 'Issue Category',
-          dataIndex: 'category',
-          key: 'category',
-          width: 120,
-          render: (category) => (
-            <Tag color={
-              (category || '').toLowerCase() === 'breakage' ? 'red' :
-              (category || '').toLowerCase() === 'calibration' ? 'blue' :
-              'gold'
-            }>
-              {(category || 'N/A').toUpperCase()}
-            </Tag>
+          title: 'Supervisor',
+          key: 'supervisor',
+          render: (_, record) => (
+            record.supervisor_name ? (
+              <Space direction="vertical" size={0}>
+                <Text>{record.supervisor_name}</Text>
+                <Text type="secondary">ID: {record.supervisor_id || 'N/A'}</Text>
+              </Space>
+            ) : (
+              <Text type="secondary">Pending</Text>
+            )
           ),
         },
         {
-          title: 'Issue Description',
-          dataIndex: 'description',
-          key: 'description',
-          width: 200,
+          title: 'Collected Date',
+          key: 'collected_date',
+          render: (_, record) => (
+            record.collected_date ?
+              new Date(record.collected_date).toLocaleString() :
+              'Not collected'
+          ),
+        }
+      ]
+      : [
+        {
+          title: 'Tool ID',
+          dataIndex: 'tool_sl_no',
+          key: 'tool_sl_no',
         },
         {
-          title: 'Report Date',
-          dataIndex: 'report_date',
-          key: 'report_date',
-          width: 150,
+          title: 'Start Date',
+          dataIndex: 'start_date',
+          key: 'start_date',
           render: (date) => date ? new Date(date).toLocaleString() : 'N/A',
         },
-      ]
-    : selectedCategory === 'returned'
-      ? [
-          {
-            title: 'Tool Details',
-            key: 'toolDetails',
-            width: 250,
-            render: (_, record) => {
-              const tool = tools.find(t => t.id === record.tool_sl_no);
-              return (
-                <Space direction="vertical" size={0}>
-                  <Text strong>{tool?.name || 'Unknown Tool'}</Text>
-                  <Text type="secondary">Serial No: {record.tool_sl_no}</Text>
-                  <Text type="secondary">Range: {tool?.range || 'N/A'}</Text>
-                  <Text type="secondary">ID Code: {tool?.identificationCode || 'N/A'}</Text>
-                </Space>
-              );
-            },
-          },
-          {
-            title: 'Request Date',
-            dataIndex: 'request_date',
-            key: 'request_date',
-            render: (date) => date ? new Date(date).toLocaleString() : 'N/A',
-          },
-          {
-            title: 'Purpose',
-            dataIndex: 'purpose',
-            key: 'purpose',
-            render: (purpose) => purpose || 'N/A',
-          },
-          {
-            title: 'Project',
-            dataIndex: 'project_details',
-            key: 'project_details',
-            render: (project_details) => project_details || 'N/A',
-          },
-          {
-            title: 'Condition',
-            dataIndex: 'condition_on_return',
-            key: 'condition',
-            render: (condition) => condition || 'N/A',
-          },
-          {
-            title: 'Remarks',
-            dataIndex: 'remarks',
-            key: 'remarks',
-            render: (remarks) => remarks || 'N/A',
-          },
-          {
-            title: 'Status',
-            key: 'status',
-            render: (_, record) => (
-              <Tag color={record.status === 'collected' ? 'success' : 'processing'}>
-                {(record.status || 'PENDING').toUpperCase()}
-              </Tag>
-            ),
-          },
-          {
-            title: 'Supervisor',
-            key: 'supervisor',
-            render: (_, record) => (
-              record.supervisor_name ? (
-                <Space direction="vertical" size={0}>
-                  <Text>{record.supervisor_name}</Text>
-                  <Text type="secondary">ID: {record.supervisor_id || 'N/A'}</Text>
-                </Space>
-              ) : (
-                <Text type="secondary">Pending</Text>
-              )
-            ),
-          },
-          {
-            title: 'Collected Date',
-            key: 'collected_date',
-            render: (_, record) => (
-              record.collected_date ? 
-              new Date(record.collected_date).toLocaleString() : 
-              'Not collected'
-            ),
-          }
-        ]
-      : [
-          {
-            title: 'Tool ID',
-            dataIndex: 'tool_sl_no',
-            key: 'tool_sl_no',
-          },
-          {
-            title: 'Start Date',
-            dataIndex: 'start_date',
-            key: 'start_date',
-            render: (date) => date ? new Date(date).toLocaleString() : 'N/A',
-          },
-          {
-            title: 'Purpose',
-            dataIndex: 'purpose',
-            key: 'purpose',
-            render: (purpose) => purpose || 'N/A',
-          },
-          {
-            title: 'Status',
-            dataIndex: 'status',
-            key: 'status',
-            render: (status) => (
-              <Tag color={status === 'in_use' ? 'processing' : 'success'}>
-                {(status || 'N/A').toUpperCase()}
-              </Tag>
-            ),
-          },
-          // Only show actions for in-use tools
-          ...(selectedCategory === 'in_use' ? [{
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => (
-              <Space>
-                <Button
-                  type="primary"
-                  size="small"
-                  onClick={() => {
+        {
+          title: 'Purpose',
+          dataIndex: 'purpose',
+          key: 'purpose',
+          render: (purpose) => purpose || 'N/A',
+        },
+        {
+          title: 'Status',
+          dataIndex: 'status',
+          key: 'status',
+          render: (status) => (
+            <Tag color={status === 'in_use' ? 'processing' : 'success'}>
+              {(status || 'N/A').toUpperCase()}
+            </Tag>
+          ),
+        },
+        // Only show actions for in-use tools
+        ...(selectedCategory === 'in_use' ? [{
+          title: 'Actions',
+          key: 'actions',
+          render: (_, record) => (
+            <Space>
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => {
+                  const tool = tools.find(t => t.id === record.tool_sl_no);
+                  setSelectedTool({
+                    tool_sl_no: record.tool_sl_no,
+                    name: tool?.name || record.name || 'Unknown Tool',
+                    purpose: record.purpose,
+                    project_details: record.project_details
+                  });
+                  setIsSubmitModalVisible(true);
+                }}
+              >
+                Return Tool
+              </Button>
+              <Button
+                type="primary"
+                danger
+                size="small"
+                loading={isSubmittingIssue}
+                onClick={async () => {
+                  try {
+                    // Check for existing issues first
+                    const hasExistingIssue = await checkExistingIssues(record.tool_sl_no);
+                    if (hasExistingIssue) {
+                      message.error('There is already a pending issue for this tool. Please wait for the current issue to be resolved.');
+                      return;
+                    }
+
+                    // Get the tool usage data
+                    const toolUsage = record;
+                    // Get the tool details
                     const tool = tools.find(t => t.id === record.tool_sl_no);
+
                     setSelectedTool({
                       tool_sl_no: record.tool_sl_no,
-                      name: tool?.name || record.name || 'Unknown Tool',
+                      name: tool?.name || 'Unknown Tool',
                       purpose: record.purpose,
                       project_details: record.project_details
                     });
-                    setIsSubmitModalVisible(true);
-                  }}
-                >
-                  Return Tool
-                </Button>
-                <Button
-                  type="primary"
-                  danger
-                  size="small"
-                  loading={isSubmittingIssue}
-                  onClick={async () => {
-                    try {
-                      // Check for existing issues first
-                      const hasExistingIssue = await checkExistingIssues(record.tool_sl_no);
-                      if (hasExistingIssue) {
-                        message.error('There is already a pending issue for this tool. Please wait for the current issue to be resolved.');
-                        return;
-                      }
 
-                      // Get the tool usage data
-                      const toolUsage = record;
-                      // Get the tool details
-                      const tool = tools.find(t => t.id === record.tool_sl_no);
-                      
-                      setSelectedTool({
-                        tool_sl_no: record.tool_sl_no,
-                        name: tool?.name || 'Unknown Tool',
-                        purpose: record.purpose,
-                        project_details: record.project_details
-                      });
-                      
-                      setIsIssueModalVisible(true);
-                    } catch (error) {
-                      console.error('Error preparing issue report:', error);
-                      message.error('Failed to prepare issue report');
-                    }
-                  }}
-                >
-                  Report Issue
-                </Button>
-              </Space>
-            ),
-          }] : [])
-        ];
+                    setIsIssueModalVisible(true);
+                  } catch (error) {
+                    console.error('Error preparing issue report:', error);
+                    message.error('Failed to prepare issue report');
+                  }
+                }}
+              >
+                Report Issue
+              </Button>
+            </Space>
+          ),
+        }] : [])
+      ];
 
   // Add this function to handle issue reporting from InUse component
   const handleIssueReportClick = (toolData) => {
@@ -1287,9 +1292,9 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        collapsible 
-        collapsed={collapsed} 
+      <Sider
+        collapsible
+        collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
           background: '#1e88e5',
@@ -1303,7 +1308,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         }}
         width={220}
       >
-        <div style={{ 
+        <div style={{
           padding: '20px',
           display: 'flex',
           alignItems: 'center',
@@ -1311,20 +1316,20 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           borderBottom: '1px solid rgba(255,255,255,0.1)',
           background: '#1e88e5'
         }}>
-          <img 
-            src={cmtisLogo} 
-            alt="CMTIS Logo" 
-            style={{ 
+          <img
+            src={cmtisLogo}
+            alt="CMTIS Logo"
+            style={{
               height: '40px',
               filter: 'brightness(0) invert(1)'
-            }} 
+            }}
           />
         </div>
 
         <Menu
           mode="inline"
           selectedKeys={[selectedMenu]}
-          style={{ 
+          style={{
             borderRight: 0,
             background: '#1e88e5',
             color: '#ffffff',
@@ -1351,9 +1356,9 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
               key: 'supervisor_responses',
               icon: <BellOutlined style={{ color: '#ffffff', fontSize: '18px' }} />,
               label: (
-                <Badge count={supervisorResponses.filter(r => 
-                  r.status === 'approved' && 
-                  r.collected !== 'yes' && 
+                <Badge count={supervisorResponses.filter(r =>
+                  r.status === 'approved' &&
+                  r.collected !== 'yes' &&
                   r.operator_id === currentUserInfo?.employee_id
                 ).length} size="small">
                   <span style={{ color: '#ffffff', fontWeight: selectedMenu === 'supervisor_responses' ? '600' : '400' }}>Supervisor Responses</span>
@@ -1379,8 +1384,8 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       </Sider>
 
       <Layout style={{ marginLeft: 220 }}>
-        <Header style={{ 
-          background: '#ffffff', 
+        <Header style={{
+          background: '#ffffff',
           padding: '0 24px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           display: 'flex',
@@ -1393,11 +1398,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           </Space>
           <Space>
             <Space style={{ marginRight: 24 }}>
-              <Avatar 
-                style={{ 
+              <Avatar
+                style={{
                   backgroundColor: '#4096ff',
-                  verticalAlign: 'middle' 
-                }} 
+                  verticalAlign: 'middle'
+                }}
                 size="large"
                 icon={<UserOutlined />}
               />
@@ -1405,9 +1410,9 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                 {currentUserInfo?.employee_name || 'Operator'}
               </span>
             </Space>
-            <Button 
-              type="primary" 
-              icon={<LogoutOutlined />} 
+            <Button
+              type="primary"
+              icon={<LogoutOutlined />}
               onClick={handleLogout}
               danger
               style={{
@@ -1423,14 +1428,14 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           {/* Statistics Cards */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
             <Col xs={24} sm={12} lg={6}>
-              <TotalToolsUsed 
+              <TotalToolsUsed
                 currentUserInfo={currentUserInfo}
                 tools={tools}
                 onCardClick={handleCardClick}
               />
             </Col>
             <Col xs={24} sm={12} lg={6}>
-              <InUse 
+              <InUse
                 currentUserInfo={currentUserInfo}
                 tools={tools}
                 onToolReturn={(record) => {
@@ -1441,13 +1446,13 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
               />
             </Col>
             <Col xs={24} sm={12} lg={6}>
-              <ReturnedTools 
+              <ReturnedTools
                 currentUserInfo={currentUserInfo}
                 onCardClick={handleCardClick}
               />
             </Col>
             <Col xs={24} sm={12} lg={6}>
-              <ReportedIssues 
+              <ReportedIssues
                 currentUserInfo={currentUserInfo}
                 onCardClick={handleCardClick}
               />
@@ -1455,8 +1460,8 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           </Row>
 
           {/* Tools Management Section */}
-          <Card 
-            style={{ 
+          <Card
+            style={{
               borderRadius: '12px',
               background: '#fff',
               boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -1470,7 +1475,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                   allowClear
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  style={{ 
+                  style={{
                     width: 400,
                     '.ant-input': {
                       borderRadius: '8px',
@@ -1504,8 +1509,8 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
             </Space>
 
             <div style={{ marginBottom: '16px' }}>
-              <Tabs 
-                activeKey={activeTab} 
+              <Tabs
+                activeKey={activeTab}
                 onChange={handleTabChange}
                 items={tabItems}
                 style={{
@@ -1660,9 +1665,9 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                     project_details: values.project_details
                   };
 
-                  const response = await fetch('http://172.18.100.33:8000/api/tool-requests', {
+                  const response = await fetch('http://localhost:8000/api/tool-requests', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(payload)
                   });
 
@@ -1787,8 +1792,8 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                 label="Issue Description"
                 rules={[{ required: true, message: 'Please describe the issue' }]}
               >
-                <Input.TextArea 
-                  rows={4} 
+                <Input.TextArea
+                  rows={4}
                   placeholder="Please provide detailed description of the issue..."
                 />
               </Form.Item>
@@ -1809,10 +1814,10 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                   }}>
                     Cancel
                   </Button>
-                  <Button 
-                    type="primary" 
-                    danger 
-                    htmlType="submit" 
+                  <Button
+                    type="primary"
+                    danger
+                    htmlType="submit"
                     loading={isSubmittingIssue}
                     disabled={!selectedTool?.unique_request_id}
                   >
@@ -1886,8 +1891,8 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                 label="Remarks"
                 rules={[{ required: true, message: 'Please provide remarks' }]}
               >
-                <Input.TextArea 
-                  rows={4} 
+                <Input.TextArea
+                  rows={4}
                   placeholder="Please provide any remarks about the tool's condition or usage..."
                 />
               </Form.Item>
@@ -1960,11 +1965,11 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           >
             <Table
               columns={supervisorResponseColumns}
-              dataSource={supervisorResponses.filter(response => 
+              dataSource={supervisorResponses.filter(response =>
                 response.operator_id === currentUserInfo?.employee_id
               )}
               rowKey="id"
-              pagination={{ 
+              pagination={{
                 pageSize: 5,
                 showTotal: (total) => `Total ${total} responses`
               }}

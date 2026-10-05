@@ -17,6 +17,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined
 } from '@ant-design/icons';
+import { getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -45,10 +46,11 @@ const TotalToolsUsed = ({ currentUserInfo, tools, onCardClick }) => {
 
   const fetchTotalToolsData = async () => {
     try {
+      const authHeaders = getAuthHeaders();
       const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-        fetch(`http://172.18.100.33:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`),
-        fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`),
-        fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}`)
+        fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+        fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+        fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
       ]);
 
       const [requestsData, returnsData, issuesData] = await Promise.all([
@@ -215,10 +217,10 @@ const TotalToolsUsed = ({ currentUserInfo, tools, onCardClick }) => {
 
   return (
     <>
-      <Card 
-        hoverable 
+      <Card
+        hoverable
         onClick={handleCardClick}
-        style={{ 
+        style={{
           borderRadius: '10px',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)',
           border: '1px solid rgba(30, 136, 229, 0.2)',

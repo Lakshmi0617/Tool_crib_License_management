@@ -23,7 +23,7 @@ const OfficerHistory = ({ officerId }) => {
       setLoading(true);
       try {
         // Fetch all tools first
-        const toolsResponse = await fetch('http://172.18.100.33:8000/api/tools');
+        const toolsResponse = await fetch('http://localhost:8000/api/tools');
         const toolsData = await toolsResponse.json();
         const toolsMap = toolsData.reduce((acc, tool) => {
           acc[tool.Sl_no] = {
@@ -36,9 +36,9 @@ const OfficerHistory = ({ officerId }) => {
         }, {});
 
         // Fetch new tool requests history
-        const requestsResponse = await fetch('http://172.18.100.33:8000/new-tool-requests/all-requests');
+        const requestsResponse = await fetch('http://localhost:8000/new-tool-requests/all-requests');
         const requestsData = await requestsResponse.json();
-        const officerRequests = requestsData.filter(request => 
+        const officerRequests = requestsData.filter(request =>
           request.officer_id === officerId
         );
         const mappedRequests = officerRequests.map(request => ({
@@ -53,9 +53,9 @@ const OfficerHistory = ({ officerId }) => {
         setRequestHistory(mappedRequests);
 
         // Fetch issues history
-        const issuesResponse = await fetch('http://172.18.100.33:8000/api/tool-issues/all');
+        const issuesResponse = await fetch('http://localhost:8000/api/tool-issues/all');
         const issuesData = await issuesResponse.json();
-        const officerIssues = issuesData.filter(issue => 
+        const officerIssues = issuesData.filter(issue =>
           issue.officer_id === officerId
         );
         const mappedIssues = officerIssues.map(issue => ({
@@ -94,8 +94,8 @@ const OfficerHistory = ({ officerId }) => {
       key: 'toolDetails',
       width: 200,
       render: (_, record) => (
-        <div style={{ 
-          background: '#f9f9f9', 
+        <div style={{
+          background: '#f9f9f9',
           padding: '8px',
           borderRadius: '4px',
         }}>
@@ -158,7 +158,7 @@ const OfficerHistory = ({ officerId }) => {
       render: status => {
         let color = 'default';
         let text = status || 'Pending';
-        
+
         switch (text.toLowerCase()) {
           case 'approved':
             color = 'success';
@@ -172,7 +172,7 @@ const OfficerHistory = ({ officerId }) => {
           default:
             color = 'default';
         }
-        
+
         return (
           <Tag color={color} style={{ borderRadius: '12px', padding: '0 10px' }}>
             {text.toUpperCase()}
@@ -187,7 +187,7 @@ const OfficerHistory = ({ officerId }) => {
       render: (_, record) => {
         if (record.status && record.status.toLowerCase() !== 'pending') {
           return (
-            <Tag 
+            <Tag
               color={record.status.toLowerCase() === 'approved' ? 'success' : 'error'}
               style={{ textTransform: 'capitalize', borderRadius: '12px', padding: '0 10px' }}
             >
@@ -248,8 +248,8 @@ const OfficerHistory = ({ officerId }) => {
         <Space direction="vertical" size={0}>
           <Text strong>Severity: <Tag color={
             record.severity === 'high' ? 'red' :
-            record.severity === 'medium' ? 'orange' :
-            'green'
+              record.severity === 'medium' ? 'orange' :
+                'green'
           }>{record.severity?.toUpperCase()}</Tag></Text>
           <Text type="secondary">Category: {record.category || 'N/A'}</Text>
           <Text type="secondary">Description: {record.description || 'N/A'}</Text>

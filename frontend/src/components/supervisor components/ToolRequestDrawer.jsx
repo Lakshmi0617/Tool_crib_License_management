@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Drawer, 
-  Form, 
-  Input, 
-  Button, 
-  InputNumber, 
-  notification, 
-  Typography, 
-  Space, 
+import {
+  Drawer,
+  Form,
+  Input,
+  Button,
+  InputNumber,
+  notification,
+  Typography,
+  Space,
   Tag,
   Table,
   Select,
@@ -15,11 +15,12 @@ import {
   Modal,
   Tooltip
 } from 'antd';
-import { 
-  ToolOutlined, 
-  SaveOutlined, 
-  CheckCircleOutlined, 
-  CloseCircleOutlined, 
+import { getAuthHeaders } from '../../config';
+import {
+  ToolOutlined,
+  SaveOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
   ClockCircleOutlined,
   UserOutlined,
   EnvironmentOutlined,
@@ -83,9 +84,9 @@ export const getTableColumns = () => [
         <Text type="secondary">ID: {record.supervisor_id}</Text>
         <Text>
           <CalendarOutlined /> Request Date: {
-            record.request_date ? 
-            new Date(record.request_date).toLocaleString() : 
-            'N/A'
+            record.request_date ?
+              new Date(record.request_date).toLocaleString() :
+              'N/A'
           }
         </Text>
       </Space>
@@ -121,9 +122,9 @@ export const getTableColumns = () => [
               <Text type="secondary">ID: {record.officer_id}</Text>
               <Text>
                 <CalendarOutlined /> Response Date: {
-                  responseDate ? 
-                  responseDate.toLocaleString() : 
-                  'Pending Response'
+                  responseDate ?
+                    responseDate.toLocaleString() :
+                    'Pending Response'
                 }
               </Text>
             </>
@@ -154,11 +155,11 @@ export const getTableColumns = () => [
 // Add new function for date filtering
 export const getFilteredRequests = (requests, dateRange) => {
   if (!dateRange || !dateRange[0] || !dateRange[1]) return requests;
-  
+
   return requests.filter(request => {
     const requestDate = dayjs(request.request_date);
-    return requestDate.isAfter(dateRange[0].startOf('day')) && 
-           requestDate.isBefore(dateRange[1].endOf('day'));
+    return requestDate.isAfter(dateRange[0].startOf('day')) &&
+      requestDate.isBefore(dateRange[1].endOf('day'));
   });
 };
 
@@ -173,19 +174,19 @@ export const downloadRequestsPDF = (requests, dateRange) => {
   }
 
   const doc = new jsPDF('l', 'mm', 'a4');
-  
+
   // Add title
   doc.setFontSize(16);
   doc.text('New Tool Requests Report', 14, 15);
-  
+
   // Add generation date and date range
   doc.setFontSize(10);
   doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 25);
-  
+
   if (dateRange[0] && dateRange[1]) {
     doc.text(`Date Range: ${dateRange[0].format('DD/MM/YYYY')} - ${dateRange[1].format('DD/MM/YYYY')}`, 14, 30);
   }
-  
+
   // Prepare table data
   const tableData = requests.map(record => [
     record.Item_Description || '',
@@ -207,14 +208,14 @@ export const downloadRequestsPDF = (requests, dateRange) => {
   // Add table
   autoTable(doc, {
     head: [[
-      'Tool Description', 'Range', 'ID Code', 'Make', 'Qty', 'Location', 
-      'Project #', 'Project Details', 'Supervisor', 'Sup. ID', 
+      'Tool Description', 'Range', 'ID Code', 'Make', 'Qty', 'Location',
+      'Project #', 'Project Details', 'Supervisor', 'Sup. ID',
       'Request Date', 'Response Date', 'Officer', 'Status'
     ]],
     body: tableData,
     startY: dateRange[0] && dateRange[1] ? 40 : 35,
     styles: { fontSize: 8, cellPadding: 2 },
-    headStyles: { 
+    headStyles: {
       fillColor: [66, 139, 202],
       textColor: 255,
       fontSize: 8,
@@ -241,11 +242,11 @@ export const downloadRequestsPDF = (requests, dateRange) => {
   });
 
   // Save the PDF
-  const dateRangeText = dateRange[0] && dateRange[1] 
+  const dateRangeText = dateRange[0] && dateRange[1]
     ? `_${dateRange[0].format('DDMMYYYY')}_to_${dateRange[1].format('DDMMYYYY')}`
     : '';
   doc.save(`new_tool_requests${dateRangeText}_${new Date().toISOString().split('T')[0]}.pdf`);
-  
+
   notification.success({
     message: 'PDF Downloaded',
     description: 'Tool requests report has been downloaded successfully.',
@@ -294,7 +295,7 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
 
   const handleDateRangeChange = (dates) => {
     setDateRange(dates);
-    
+
     if (dates && dates[0] && dates[1]) {
       const filtered = getFilteredRequests(pendingToolRequests, dates);
       if (filtered.length === 0) {
@@ -319,7 +320,7 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
 
   const fetchExistingTools = async () => {
     try {
-      const response = await fetch('http://172.18.100.33:8000/api/tools');
+      const response = await fetch('http://localhost:8000/api/tools', { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch tools');
       const data = await response.json();
       setExistingTools(data);
@@ -339,10 +340,10 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
 
     if (value.trim()) {
       // Find matching tools based on input
-      const matches = existingTools.filter(tool => 
+      const matches = existingTools.filter(tool =>
         tool.Item_Description.toLowerCase().includes(value.toLowerCase())
       );
-      
+
       if (matches.length > 0) {
         // Sort matches by Sl_no ascending
         const sortedMatches = [...matches].sort((a, b) => a.Sl_no - b.Sl_no);
@@ -411,11 +412,11 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
         tool_sl_no: selectedTool?.Sl_no // Add the Sl.no if it's an existing tool
       };
 
-      const response = await fetch('http://172.18.100.33:8000/new-tool-requests', {
+      const response = await fetch('http://localhost:8000/new-tool-requests', {
         method: 'POST',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
-        },
+        }),
         body: JSON.stringify(requestBody),
       });
 
@@ -431,7 +432,7 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
 
       form.resetFields();
       onClose();
-      
+
       if (onRequestSubmitted) {
         await onRequestSubmitted();
       }
@@ -471,8 +472,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
       extra={
         <Space>
           <Button onClick={onClose}>Cancel</Button>
-          <Button 
-            type="primary" 
+          <Button
+            type="primary"
             onClick={() => form.submit()}
             icon={<SaveOutlined />}
             loading={loading}
@@ -493,21 +494,21 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
           }}
         >
           <Title level={5} style={{ marginBottom: '24px' }}>Tool Information</Title>
-          
+
           <div style={{ position: 'relative' }}>
             <Form.Item
               name="Item_Description"
               label="Tool Name"
               rules={[{ required: true, message: 'Please enter tool name' }]}
             >
-              <Input 
+              <Input
                 placeholder="Type tool name to search"
                 onChange={handleItemDescriptionChange}
                 size="large"
                 prefix={<ToolOutlined style={{ color: '#bfbfbf' }} />}
               />
             </Form.Item>
-            
+
             {matchingTools.length > 0 && (
               <div style={{
                 position: 'absolute',
@@ -527,8 +528,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
                   borderBottom: '1px solid #f0f0f0',
                   background: '#f9f9f9'
                 }}>
-                  <Button 
-                    type="link" 
+                  <Button
+                    type="link"
                     onClick={handleManualEntry}
                     icon={<PlusOutlined />}
                   >
@@ -556,18 +557,18 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
                       }
                     }}
                   >
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: '8px',
                       marginBottom: '4px'
                     }}>
                       <Tag color="blue">Sl.No: {tool.Sl_no}</Tag>
                       <div style={{ fontWeight: 500 }}>{tool.Item_Description}</div>
                     </div>
-                    <div style={{ 
-                      fontSize: '13px', 
-                      color: '#1890ff', 
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#1890ff',
                       fontWeight: '500',
                       marginBottom: '2px'
                     }}>
@@ -589,8 +590,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
               rules={[{ required: true, message: 'Please enter range' }]}
               style={{ width: '50%' }}
             >
-              <Input 
-                placeholder="Enter range in mm" 
+              <Input
+                placeholder="Enter range in mm"
                 size="large"
                 disabled={isExistingTool && selectedTool}
               />
@@ -602,8 +603,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
               rules={[{ required: true, message: 'Please enter ID code' }]}
               style={{ width: '50%' }}
             >
-              <Input 
-                placeholder="Enter ID code" 
+              <Input
+                placeholder="Enter ID code"
                 size="large"
                 disabled={isExistingTool && selectedTool}
               />
@@ -617,7 +618,7 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
               rules={[{ required: true, message: 'Please enter make' }]}
               style={{ width: '50%' }}
             >
-              <Input 
+              <Input
                 placeholder="Enter make"
                 size="large"
                 disabled={isExistingTool && selectedTool}
@@ -630,11 +631,11 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
               rules={[{ required: true, message: 'Please enter quantity' }]}
               style={{ width: '50%' }}
             >
-              <InputNumber 
-                min={1} 
-                placeholder="Enter quantity" 
+              <InputNumber
+                min={1}
+                placeholder="Enter quantity"
                 size="large"
-                style={{ width: '100%' }} 
+                style={{ width: '100%' }}
                 disabled={false}
               />
             </Form.Item>
@@ -645,7 +646,7 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
             label="Location"
             rules={[{ required: true, message: 'Please enter location' }]}
           >
-            <Input 
+            <Input
               placeholder="Enter storage location"
               size="large"
               disabled={isExistingTool && selectedTool}
@@ -656,8 +657,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
             name="Gauge"
             label="Gauge"
           >
-            <Input 
-              placeholder="Enter gauge specifications (optional)" 
+            <Input
+              placeholder="Enter gauge specifications (optional)"
               size="large"
               disabled={isExistingTool && selectedTool}
             />
@@ -670,8 +671,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
             label="Project Number"
             rules={[{ required: true, message: 'Please enter project number' }]}
           >
-            <Input 
-              placeholder="Enter project number" 
+            <Input
+              placeholder="Enter project number"
               size="large"
               prefix={<NumberOutlined style={{ color: '#bfbfbf' }} />}
             />
@@ -682,8 +683,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
             label="Project Details"
             rules={[{ required: true, message: 'Please enter project details' }]}
           >
-            <Input.TextArea 
-              placeholder="Enter project details" 
+            <Input.TextArea
+              placeholder="Enter project details"
               rows={3}
               showCount
               maxLength={200}
@@ -694,8 +695,8 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
             name="Remarks"
             label="Remarks"
           >
-            <Input.TextArea 
-              placeholder="Enter any additional remarks or special requirements" 
+            <Input.TextArea
+              placeholder="Enter any additional remarks or special requirements"
               rows={4}
               showCount
               maxLength={500}

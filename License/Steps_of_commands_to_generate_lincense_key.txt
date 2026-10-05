@@ -1,0 +1,61 @@
+PS L:\Inventory_management\ToolCrib_SOFTWARE> python License/client_license.py --request
+
+==========================================
+      HARDWARE MACHINE REQUEST GENERATED   
+==========================================
+MAC Address:  0068EBBCA085
+System UUID:  8AD98685-FD1C-4E97-8EDE-413B706CC4A7
+Fingerprint:  3B9E512C69514D190FF4836F2E5C0E578B85266AFBE1714DAE42D77285536D3D
+------------------------------------------
+Saved Machine Request File: L:\Inventory_management\ToolCrib_SOFTWARE\License\machine_request.txt
+
+
+
+
+
+''''''''''''''''''''''''''''''''''''SECOND COMMAND''''''''''''''''''''''''''''''''''''''''''''''''''''''
+PS L:\Inventory_management\ToolCrib_SOFTWARE> python License/generate_license.py --request License/machine_request.txt --id TC-10001 --product ToolCrib --days 365
+
+==========================================
+      ToolCrib License Key Generator      
+==========================================
+License ID:   TC-10001
+Product:      ToolCrib
+Fingerprint:  3B9E512C69514D190FF4836F2E5C0E578B85266AFBE1714DAE42D77285536D3D
+Validity:     365 days (Expires: 2027-10-05T04:17:31.026283Z)
+------------------------------------------
+Saved License File: L:\Inventory_management\ToolCrib_SOFTWARE\License\license_TC-10001.json
+
+LICENSE DATA JSON:
+{
+  "LicenseId": "TC-10001",
+  "Fingerprint": "3B9E512C69514D190FF4836F2E5C0E578B85266AFBE1714DAE42D77285536D3D",
+  "Product": "ToolCrib",
+  "Expiry": "2027-10-05T04:17:31.026283Z",
+  "Signature": "JecG6j6L9i89TnjUB8c6TqOVhMpDZ2FzV+dQUvSlI+nhIaJnjYpt1cPNrJo9Skx5HaokkFsPIJtibsdIbcdq2f7myWruuuvRZsgzdAwoxFeVZ0TgTffo7DdBZP+tboc7bA+VnlOnoii5pxVnrwtSzh0vc1htTlQ6z3CcAuWLIIk+GHeI77IziRAma2FDmDvbua2LjrpbsfS1YOh2OBg/Q618Bm1rj8yzp4YPWpbGQF222il0DKEqH3cOn/z4Z7RW5NKBLcTSQh/+p7XjQRaBON8vXG09/tcdTKsV2TtYdrwkOry4zcBV9komjuPWDp/9HiNtew9H6Fl7fonEzbKEUN6LXtKaehOFwl7irJLzRrw3RXtPQs0Ag41BujNPIyB/4lVtInleBJWPGduHa9JWoOiKAgV8Kkk2SWm+GAItd4aIQz4I7Sj5VQOpxEg6MyzmKAaRea29crUntXHTuDyCcultsTJyuSJnwmHg/u24KwtO1zU/KAcFbZnjcBkyL4D0"  
+}
+------------------------------------------
+
+
+
+
+
+
+'''''''''''''''''''''''''''''''THIRD COMMAND'''''''''''''''''''''''''''''''''''''''''''
+PS L:\Inventory_management\ToolCrib_SOFTWARE> python License/client_license.py --verify License/license_TC-10001.json
+
+==========================================
+      ToolCrib License Verification
+==========================================
+Status:       [VALID LICENSE]
+Message:      License is valid and verified
+License ID:   TC-10001
+Product:      ToolCrib
+Expiry:       2027-10-05T04:17:31.026283Z
+RSA Signature: [Verified]
+Fingerprint:  [Host Match]
+------------------------------------------
+
+
+
+

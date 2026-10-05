@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Statistic, Space, Typography, message } from 'antd';
 import { WarningOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -14,8 +15,8 @@ const ReportedIssues = ({ currentUserInfo, onCardClick }) => {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://172.18.100.33:8000/api/tool-issues/${currentUserInfo.employee_id}?officer_status=approved`);
-      
+      const response = await fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}?officer_status=approved`, { headers: getAuthHeaders() });
+
       if (!response.ok) {
         throw new Error('Failed to fetch issues data');
       }
@@ -36,10 +37,10 @@ const ReportedIssues = ({ currentUserInfo, onCardClick }) => {
   }, [currentUserInfo]);
 
   return (
-    <Card 
-      hoverable 
+    <Card
+      hoverable
       onClick={() => onCardClick('issues')}
-      style={{ 
+      style={{
         borderRadius: '10px',
         background: 'linear-gradient(135deg, #ffffff 0%, #fff1f1 100%)',
         border: '1px solid rgba(198, 40, 40, 0.2)',
@@ -63,10 +64,10 @@ const ReportedIssues = ({ currentUserInfo, onCardClick }) => {
         }
         value={issuesCount}
         loading={false} // Never show loading state in the UI
-        valueStyle={{ 
-          color: '#c62828', 
-          fontSize: '28px', 
-          fontWeight: '600', 
+        valueStyle={{
+          color: '#c62828',
+          fontSize: '28px',
+          fontWeight: '600',
           fontFamily: 'Segoe UI, Roboto, sans-serif',
           opacity: loading ? 0.7 : 1, // Subtle opacity change during loading
           transition: 'opacity 0.3s ease' // Smooth transition for opacity changes

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Space, Tag, Typography, Card, Row, Col, Statistic } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, FileTextOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { EnvironmentOutlined } from '@ant-design/icons';
+import { API_BASE_URL, getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -24,8 +25,9 @@ const SupervisorHistory = ({ supervisorId }) => {
     const fetchHistory = async () => {
       setLoading(true);
       try {
+        const authHeaders = getAuthHeaders();
         // Fetch all tools first
-        const toolsResponse = await fetch('http://172.18.100.33:8000/api/tools');
+        const toolsResponse = await fetch(`${API_BASE_URL}/api/tools`, { headers: authHeaders });
         const toolsData = await toolsResponse.json();
         const toolsMap = toolsData.reduce((acc, tool) => {
           acc[tool.Sl_no] = {
@@ -38,7 +40,7 @@ const SupervisorHistory = ({ supervisorId }) => {
         }, {});
 
         // Fetch requests history
-        const requestsResponse = await fetch(`http://172.18.100.33:8000/api/tool-requests/supervisor/${supervisorId}`);
+        const requestsResponse = await fetch(`${API_BASE_URL}/api/tool-requests/supervisor/${supervisorId}`, { headers: authHeaders });
         const requestsData = await requestsResponse.json();
         const mappedRequests = requestsData.map(request => ({
           ...request,
@@ -50,7 +52,7 @@ const SupervisorHistory = ({ supervisorId }) => {
         setRequestHistory(mappedRequests);
 
         // Fetch issues history
-        const issuesResponse = await fetch(`http://172.18.100.33:8000/api/tool-issues/supervisor/${supervisorId}`);
+        const issuesResponse = await fetch(`${API_BASE_URL}/api/tool-issues/supervisor/${supervisorId}`, { headers: authHeaders });
         const issuesData = await issuesResponse.json();
         const mappedIssues = issuesData.map(issue => ({
           ...issue,
@@ -62,7 +64,7 @@ const SupervisorHistory = ({ supervisorId }) => {
         setIssueHistory(mappedIssues);
 
         // Fetch returns history
-        const returnsResponse = await fetch(`http://172.18.100.33:8000/api/tool-returns/supervisor/${supervisorId}`);
+        const returnsResponse = await fetch(`${API_BASE_URL}/api/tool-returns/supervisor/${supervisorId}`, { headers: authHeaders });
         const returnsData = await returnsResponse.json();
         const mappedReturns = returnsData.map(return_ => ({
           ...return_,
@@ -206,8 +208,8 @@ const SupervisorHistory = ({ supervisorId }) => {
         <Space direction="vertical" size={0}>
           <Text strong>Severity: <Tag color={
             record.severity === 'high' ? 'red' :
-            record.severity === 'medium' ? 'orange' :
-            'green'
+              record.severity === 'medium' ? 'orange' :
+                'green'
           }>{record.severity?.toUpperCase()}</Tag></Text>
           <Text type="secondary">Category: {record.category || 'N/A'}</Text>
           <Text type="secondary">Description: {record.description || 'N/A'}</Text>

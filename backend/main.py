@@ -97,18 +97,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 # Create FastAPI app
 app = FastAPI()
 
-# CORS configuration with proper preflight handling
-origins = [
-
-    "http://172.18.100.33:5173",  # Vite dev server
-    "http://172.18.100.33",       # Production frontend
-    "http://localhost:5173",      # Local development
-    "http://localhost:8000",      # Local backend
-]
-
+# CORS configuration with proper preflight handling for all local IPs
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -153,13 +145,57 @@ async def startup_event():
         raise e
 
 
+from license_routes import router as license_router
+from license_utils import get_all_system_mac_addresses, verify_license_key
+from models import LicenseInfo
+
+# License Verification Middleware
+class LicenseCheckMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable):
+        path = request.url.path
+        # Exempt public/health/license management endpoints from blocking
+        exempt_paths = [
+            "/", "/health", "/docs", "/openapi.json", "/redoc",
+            "/api/license", "/companies"
+        ]
+        if any(path == p or path.startswith("/api/license") or path.startswith("/docs") for p in exempt_paths):
+            return await call_next(request)
+            
+        # Verify active license in database
+        try:
+            db_session = SessionLocal()
+            try:
+                active_lic = db_session.query(LicenseInfo).filter(LicenseInfo.is_active == "yes").order_by(LicenseInfo.id.desc()).first()
+                if not active_lic:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Software License is missing or not activated.", "code": "LICENSE_INVALID"}
+                    )
+                macs = get_all_system_mac_addresses()
+                is_valid, payload, msg, details = verify_license_key(active_lic.license_key, target_macs=macs)
+                if not is_valid:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": f"Software License Error: {msg}", "code": "LICENSE_EXPIRED"}
+                    )
+            finally:
+                db_session.close()
+        except Exception as e:
+            logger.error(f"License check middleware error: {e}")
+            
+        return await call_next(request)
+
+
 # Include routers
+app.include_router(license_router)
 app.include_router(register_router, prefix="", tags=["Authentication"])
 app.include_router(tools_router, prefix="/api", tags=["Tools"])
 app.include_router(tool_requests_router, prefix="/api", tags=["Tool Requests"])
 app.include_router(tool_issues_router, prefix="/api", tags=["Tool Issues"])
 app.include_router(tool_returns_router, prefix="/api", tags=["Tool Returns"])
 app.include_router(new_tool_requests_router, tags=["New Tool Requests"])
+app.add_middleware(LicenseCheckMiddleware)
+
 
 
 @app.get("/", tags=["Health"])
@@ -178,7 +214,7 @@ if __name__ == "__main__":
     logger.info("Starting Tool Crib API Server")
     uvicorn.run(
         "main:app",
-        host="172.18.100.33",
+        host="localhost",
         port=8000,
         reload=True,
         workers=1,

@@ -13,6 +13,7 @@ import {
   CheckCircleOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
+import { getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -28,9 +29,9 @@ const ReturnedTools = ({ currentUserInfo, onCardClick }) => {
 
     try {
       setLoading(true);
-      
-      const response = await fetch(`http://172.18.100.33:8000/api/tool-returns/operator/${currentUserInfo.employee_id}?status=collected`);
-      
+
+      const response = await fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}?status=collected`, { headers: getAuthHeaders() });
+
       if (!response.ok) {
         throw new Error('Failed to fetch data');
       }
@@ -70,10 +71,10 @@ const ReturnedTools = ({ currentUserInfo, onCardClick }) => {
   );
 
   return (
-    <Card 
-      hoverable 
+    <Card
+      hoverable
       onClick={handleCardClick}
-      style={{ 
+      style={{
         borderRadius: '10px',
         background: 'linear-gradient(135deg, #ffffff 0%, #f6fbf6 100%)',
         border: '1px solid rgba(46, 125, 50, 0.2)',

@@ -1,0 +1,85 @@
+# ==========================================
+# ToolCrib Software - Main .gitignore
+# ==========================================
+
+# ------------------------------------------
+# Python & Backend Dependencies / Virtual Envs
+# ------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+backend/venv/
+backend/__pycache__/
+backend/*/__pycache__/
+*.db
+*.sqlite3
+
+# ------------------------------------------
+# Node.js & Frontend Build Artifacts
+# ------------------------------------------
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+frontend/.vite/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------------------
+# Environment Variables & Sensitive Key Files
+# ------------------------------------------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.b64
+*.lic
+private_key.pem
+public_key.pem
+backend/private_key.pem
+backend/public_key.pem
+License/private_key.pem
+License/public_key.pem
+
+# ------------------------------------------
+# License Request & Generated License Outputs
+# ------------------------------------------
+License/machine_request.txt
+License/license_key.json
+License/license_key.txt
+
+# ------------------------------------------
+# Logs, Temp Files & OS Files
+# ------------------------------------------
+*.log
+logs/
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ------------------------------------------
+# IDE & Code Editor Files
+# ------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

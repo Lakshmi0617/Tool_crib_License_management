@@ -19,17 +19,17 @@ const ItemIssuesHistory = () => {
   const fetchIssues = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://172.18.100.33:8000/api/tool-issues/all');
+      const response = await fetch('http://localhost:8000/api/tool-issues/all');
       if (!response.ok) {
         throw new Error('Failed to fetch issues');
       }
       const data = await response.json();
-      
+
       // Sort data by report date in descending order
-      const sortedData = data.sort((a, b) => 
+      const sortedData = data.sort((a, b) =>
         new Date(b.report_date) - new Date(a.report_date)
       );
-      
+
       setIssues(sortedData);
       if (!isFiltering) {
         setFilteredData(sortedData);
@@ -57,16 +57,16 @@ const ItemIssuesHistory = () => {
       if (type === 'report_to_officer') {
         const reportDate = new Date(issue.report_date);
         const officerApprovalDate = issue.officer_approval_date ? new Date(issue.officer_approval_date) : null;
-        return reportDate >= startDateTime && 
-               reportDate <= endDateTime && 
-               officerApprovalDate;
+        return reportDate >= startDateTime &&
+          reportDate <= endDateTime &&
+          officerApprovalDate;
       } else {
         const officerApprovalDate = issue.officer_approval_date ? new Date(issue.officer_approval_date) : null;
         const supervisorApprovalDate = issue.supervisor_approval_date ? new Date(issue.supervisor_approval_date) : null;
-        return officerApprovalDate && 
-               supervisorApprovalDate &&
-               officerApprovalDate >= startDateTime && 
-               officerApprovalDate <= endDateTime;
+        return officerApprovalDate &&
+          supervisorApprovalDate &&
+          officerApprovalDate >= startDateTime &&
+          officerApprovalDate <= endDateTime;
       }
     });
   };
@@ -96,228 +96,228 @@ const ItemIssuesHistory = () => {
     setFilteredData(issues);
   };
 
-const handleDownloadPDF = () => {
-  try {
-    const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a4'
-    });
+  const handleDownloadPDF = () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-    // Title
-    doc.setFontSize(14);
-    doc.text('Tool Issues Report', 15, 15);
+      // Title
+      doc.setFontSize(14);
+      doc.text('Tool Issues Report', 15, 15);
 
-    // Add filter info
-    doc.setFontSize(10);
-    doc.text(`Filter Type: ${filterType === 'report_to_officer' ? 'Report to Officer Approval' : 'Officer to Supervisor Approval'}`, 15, 22);
-    if (dateRange) {
-      doc.text(`Date Range: ${dateRange[0].format('DD/MM/YYYY')} - ${dateRange[1].format('DD/MM/YYYY')}`, 15, 28);
-    }
-
-    // Define compact column headers and widths
-    const startY = dateRange ? 35 : 30;
-    const margin = 10;
-    const headerHeight = 8;
-    
-    const headers = [
-      { title: 'Tool Info', width: 35 },
-      { title: 'Operator', width: 35 },
-      { title: 'Issue Details', width: 45 },
-      { title: 'Report Date', width: 30 },
-      { title: 'Officer', width: 35 },
-      { title: 'Supervisor', width: 35 }
-    ];
-
-    // Calculate total width
-    const totalWidth = headers.reduce((sum, header) => sum + header.width, 0);
-
-    // Draw header background
-    doc.setFillColor(33, 150, 243);
-    doc.rect(margin, startY, totalWidth, headerHeight, 'F');
-
-    // Draw headers
-    let currentX = margin;
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
-    headers.forEach((header, index) => {
-      const textWidth = doc.getStringUnitWidth(header.title) * doc.getFontSize() / doc.internal.scaleFactor;
-      const textX = currentX + (header.width - textWidth) / 2;
-      doc.text(header.title, textX, startY + 5.5);
-      
-      // Draw vertical lines
-      if (index < headers.length - 1) {
-        doc.setDrawColor(255, 255, 255);
-        doc.line(currentX + header.width, startY, currentX + header.width, startY + headerHeight);
-      }
-      currentX += header.width;
-    });
-
-    let currentY = startY + headerHeight;
-    const data = isFiltering ? filteredData : issues;
-    const rowHeight = 22; // Reduced from 30
-    
-    // Reset colors for data
-    doc.setTextColor(0, 0, 0);
-    doc.setDrawColor(200, 200, 200);
-    doc.setFontSize(7); // Smaller font size
-
-    data.forEach((issue, index) => {
-      // Check if we need a new page
-      if (currentY + rowHeight > doc.internal.pageSize.height - 15) {
-        doc.addPage();
-        currentY = 20;
-        
-        // Redraw headers on new page
-        doc.setFillColor(33, 150, 243);
-        doc.rect(margin, currentY, totalWidth, headerHeight, 'F');
-        
-        let headerX = margin;
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(9);
-        headers.forEach((header, idx) => {
-          const textWidth = doc.getStringUnitWidth(header.title) * doc.getFontSize() / doc.internal.scaleFactor;
-          const textX = headerX + (header.width - textWidth) / 2;
-          doc.text(header.title, textX, currentY + 5.5);
-          
-          if (idx < headers.length - 1) {
-            doc.setDrawColor(255, 255, 255);
-            doc.line(headerX + header.width, currentY, headerX + header.width, currentY + headerHeight);
-          }
-          headerX += header.width;
-        });
-        
-        currentY += headerHeight;
-        doc.setTextColor(0, 0, 0);
-        doc.setDrawColor(200, 200, 200);
-        doc.setFontSize(7);
+      // Add filter info
+      doc.setFontSize(10);
+      doc.text(`Filter Type: ${filterType === 'report_to_officer' ? 'Report to Officer Approval' : 'Officer to Supervisor Approval'}`, 15, 22);
+      if (dateRange) {
+        doc.text(`Date Range: ${dateRange[0].format('DD/MM/YYYY')} - ${dateRange[1].format('DD/MM/YYYY')}`, 15, 28);
       }
 
-      // Alternating row background
-      if (index % 2 === 1) {
-        doc.setFillColor(248, 248, 248);
-        doc.rect(margin, currentY, totalWidth, rowHeight, 'F');
-      }
+      // Define compact column headers and widths
+      const startY = dateRange ? 35 : 30;
+      const margin = 10;
+      const headerHeight = 8;
 
-      currentX = margin;
-      const baseY = currentY;
+      const headers = [
+        { title: 'Tool Info', width: 35 },
+        { title: 'Operator', width: 35 },
+        { title: 'Issue Details', width: 45 },
+        { title: 'Report Date', width: 30 },
+        { title: 'Officer', width: 35 },
+        { title: 'Supervisor', width: 35 }
+      ];
 
-      // Tool Info column
-      doc.rect(currentX, currentY, headers[0].width, rowHeight);
-      doc.setFont(undefined, 'bold');
-      doc.text('Allen Key', currentX + 1, currentY + 4);
-      doc.setFont(undefined, 'normal');
-      doc.text([
-        `S/N: ${issue.tool_sl_no}`,
-        `Range: ${issue.range || '3.5mm'}`,
-        `Code: ${issue.identificationCode || 'N/A'}`,
-        `Loc: ${issue.location || 'N/A'}`
-      ], currentX + 1, currentY + 8, { maxWidth: headers[0].width - 2 });
-      currentX += headers[0].width;
+      // Calculate total width
+      const totalWidth = headers.reduce((sum, header) => sum + header.width, 0);
 
-      // Operator column
-      doc.rect(currentX, currentY, headers[1].width, rowHeight);
-      doc.setFont(undefined, 'bold');
-      doc.text(issue.operator_name, currentX + 1, currentY + 4);
-      doc.setFont(undefined, 'normal');
-      doc.text([
-        `ID: ${issue.operator_id}`,
-        `Dept: ${issue.department || 'N/A'}`,
-        `Contact: ${issue.contact || 'N/A'}`
-      ], currentX + 1, currentY + 8, { maxWidth: headers[1].width - 2 });
-      currentX += headers[1].width;
+      // Draw header background
+      doc.setFillColor(33, 150, 243);
+      doc.rect(margin, startY, totalWidth, headerHeight, 'F');
 
-      // Issue Details column
-      doc.rect(currentX, currentY, headers[2].width, rowHeight);
-      doc.text([
-        `Severity: ${issue.severity.toUpperCase()}`,
-        `Category: ${issue.category}`,
-        `Desc: ${issue.description}`,
-        `Purpose: ${issue.purpose}`,
-        `Project: ${issue.project_details}`
-      ], currentX + 1, currentY + 4, { maxWidth: headers[2].width - 2 });
-      currentX += headers[2].width;
+      // Draw headers
+      let currentX = margin;
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      headers.forEach((header, index) => {
+        const textWidth = doc.getStringUnitWidth(header.title) * doc.getFontSize() / doc.internal.scaleFactor;
+        const textX = currentX + (header.width - textWidth) / 2;
+        doc.text(header.title, textX, startY + 5.5);
 
-      // Report Date column
-      doc.rect(currentX, currentY, headers[3].width, rowHeight);
-      const reportDate = new Date(issue.report_date);
-      doc.text([
-        reportDate.toLocaleDateString('en-GB'),
-        reportDate.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: true 
-        })
-      ], currentX + 1, currentY + 6, { maxWidth: headers[3].width - 2 });
-      currentX += headers[3].width;
+        // Draw vertical lines
+        if (index < headers.length - 1) {
+          doc.setDrawColor(255, 255, 255);
+          doc.line(currentX + header.width, startY, currentX + header.width, startY + headerHeight);
+        }
+        currentX += header.width;
+      });
 
-      // Officer column
-      doc.rect(currentX, currentY, headers[4].width, rowHeight);
-      doc.setFont(undefined, 'bold');
-      doc.text(issue.officer_name, currentX + 1, currentY + 4);
-      doc.setFont(undefined, 'normal');
-      const officerDate = new Date(issue.officer_approval_date);
-      doc.text([
-        `ID: ${issue.officer_id}`,
-        officerDate.toLocaleDateString('en-GB'),
-        officerDate.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: true 
-        }),
-        `Status: ${issue.officer_status?.toUpperCase()}`
-      ], currentX + 1, currentY + 8, { maxWidth: headers[4].width - 2 });
-      currentX += headers[4].width;
+      let currentY = startY + headerHeight;
+      const data = isFiltering ? filteredData : issues;
+      const rowHeight = 22; // Reduced from 30
 
-      // Supervisor column
-      doc.rect(currentX, currentY, headers[5].width, rowHeight);
-      doc.setFont(undefined, 'bold');
-      doc.text(issue.supervisor_name, currentX + 1, currentY + 4);
-      doc.setFont(undefined, 'normal');
-      if (issue.supervisor_approval_date) {
-        const supervisorDate = new Date(issue.supervisor_approval_date);
+      // Reset colors for data
+      doc.setTextColor(0, 0, 0);
+      doc.setDrawColor(200, 200, 200);
+      doc.setFontSize(7); // Smaller font size
+
+      data.forEach((issue, index) => {
+        // Check if we need a new page
+        if (currentY + rowHeight > doc.internal.pageSize.height - 15) {
+          doc.addPage();
+          currentY = 20;
+
+          // Redraw headers on new page
+          doc.setFillColor(33, 150, 243);
+          doc.rect(margin, currentY, totalWidth, headerHeight, 'F');
+
+          let headerX = margin;
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(9);
+          headers.forEach((header, idx) => {
+            const textWidth = doc.getStringUnitWidth(header.title) * doc.getFontSize() / doc.internal.scaleFactor;
+            const textX = headerX + (header.width - textWidth) / 2;
+            doc.text(header.title, textX, currentY + 5.5);
+
+            if (idx < headers.length - 1) {
+              doc.setDrawColor(255, 255, 255);
+              doc.line(headerX + header.width, currentY, headerX + header.width, currentY + headerHeight);
+            }
+            headerX += header.width;
+          });
+
+          currentY += headerHeight;
+          doc.setTextColor(0, 0, 0);
+          doc.setDrawColor(200, 200, 200);
+          doc.setFontSize(7);
+        }
+
+        // Alternating row background
+        if (index % 2 === 1) {
+          doc.setFillColor(248, 248, 248);
+          doc.rect(margin, currentY, totalWidth, rowHeight, 'F');
+        }
+
+        currentX = margin;
+        const baseY = currentY;
+
+        // Tool Info column
+        doc.rect(currentX, currentY, headers[0].width, rowHeight);
+        doc.setFont(undefined, 'bold');
+        doc.text('Allen Key', currentX + 1, currentY + 4);
+        doc.setFont(undefined, 'normal');
         doc.text([
-          `ID: ${issue.supervisor_id}`,
-          supervisorDate.toLocaleDateString('en-GB'),
-          supervisorDate.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+          `S/N: ${issue.tool_sl_no}`,
+          `Range: ${issue.range || '3.5mm'}`,
+          `Code: ${issue.identificationCode || 'N/A'}`,
+          `Loc: ${issue.location || 'N/A'}`
+        ], currentX + 1, currentY + 8, { maxWidth: headers[0].width - 2 });
+        currentX += headers[0].width;
+
+        // Operator column
+        doc.rect(currentX, currentY, headers[1].width, rowHeight);
+        doc.setFont(undefined, 'bold');
+        doc.text(issue.operator_name, currentX + 1, currentY + 4);
+        doc.setFont(undefined, 'normal');
+        doc.text([
+          `ID: ${issue.operator_id}`,
+          `Dept: ${issue.department || 'N/A'}`,
+          `Contact: ${issue.contact || 'N/A'}`
+        ], currentX + 1, currentY + 8, { maxWidth: headers[1].width - 2 });
+        currentX += headers[1].width;
+
+        // Issue Details column
+        doc.rect(currentX, currentY, headers[2].width, rowHeight);
+        doc.text([
+          `Severity: ${issue.severity.toUpperCase()}`,
+          `Category: ${issue.category}`,
+          `Desc: ${issue.description}`,
+          `Purpose: ${issue.purpose}`,
+          `Project: ${issue.project_details}`
+        ], currentX + 1, currentY + 4, { maxWidth: headers[2].width - 2 });
+        currentX += headers[2].width;
+
+        // Report Date column
+        doc.rect(currentX, currentY, headers[3].width, rowHeight);
+        const reportDate = new Date(issue.report_date);
+        doc.text([
+          reportDate.toLocaleDateString('en-GB'),
+          reportDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
-            hour12: true 
-          }),
-          `Status: ${issue.supervisor_status?.toUpperCase()}`
-        ], currentX + 1, currentY + 8, { maxWidth: headers[5].width - 2 });
-      } else {
+            hour12: true
+          })
+        ], currentX + 1, currentY + 6, { maxWidth: headers[3].width - 2 });
+        currentX += headers[3].width;
+
+        // Officer column
+        doc.rect(currentX, currentY, headers[4].width, rowHeight);
+        doc.setFont(undefined, 'bold');
+        doc.text(issue.officer_name, currentX + 1, currentY + 4);
+        doc.setFont(undefined, 'normal');
+        const officerDate = new Date(issue.officer_approval_date);
         doc.text([
-          `ID: ${issue.supervisor_id}`,
-          'Pending',
-          '',
-          `Status: ${issue.supervisor_status?.toUpperCase()}`
-        ], currentX + 1, currentY + 8, { maxWidth: headers[5].width - 2 });
+          `ID: ${issue.officer_id}`,
+          officerDate.toLocaleDateString('en-GB'),
+          officerDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }),
+          `Status: ${issue.officer_status?.toUpperCase()}`
+        ], currentX + 1, currentY + 8, { maxWidth: headers[4].width - 2 });
+        currentX += headers[4].width;
+
+        // Supervisor column
+        doc.rect(currentX, currentY, headers[5].width, rowHeight);
+        doc.setFont(undefined, 'bold');
+        doc.text(issue.supervisor_name, currentX + 1, currentY + 4);
+        doc.setFont(undefined, 'normal');
+        if (issue.supervisor_approval_date) {
+          const supervisorDate = new Date(issue.supervisor_approval_date);
+          doc.text([
+            `ID: ${issue.supervisor_id}`,
+            supervisorDate.toLocaleDateString('en-GB'),
+            supervisorDate.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            }),
+            `Status: ${issue.supervisor_status?.toUpperCase()}`
+          ], currentX + 1, currentY + 8, { maxWidth: headers[5].width - 2 });
+        } else {
+          doc.text([
+            `ID: ${issue.supervisor_id}`,
+            'Pending',
+            '',
+            `Status: ${issue.supervisor_status?.toUpperCase()}`
+          ], currentX + 1, currentY + 8, { maxWidth: headers[5].width - 2 });
+        }
+
+        currentY += rowHeight;
+      });
+
+      // Add footer with summary
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(`Total Issues: ${data.length}`, margin, doc.internal.pageSize.height - 15);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, margin + 50, doc.internal.pageSize.height - 15);
+        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 25, doc.internal.pageSize.height - 15);
       }
 
-      currentY += rowHeight;
-    });
-
-    // Add footer with summary
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.text(`Total Issues: ${data.length}`, margin, doc.internal.pageSize.height - 15);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, margin + 50, doc.internal.pageSize.height - 15);
-      doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 25, doc.internal.pageSize.height - 15);
+      // Save the PDF
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filterTypeStr = filterType === 'report_to_officer' ? 'ReportToOfficer' : 'OfficerToSupervisor';
+      doc.save(`ToolIssuesReport_${filterTypeStr}_${timestamp}.pdf`);
+      message.success('PDF downloaded successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      message.error('Failed to download PDF');
     }
-
-    // Save the PDF
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filterTypeStr = filterType === 'report_to_officer' ? 'ReportToOfficer' : 'OfficerToSupervisor';
-    doc.save(`ToolIssuesReport_${filterTypeStr}_${timestamp}.pdf`);
-    message.success('PDF downloaded successfully');
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    message.error('Failed to download PDF');
-  }
-};
+  };
 
   const columns = [
     {
@@ -325,8 +325,8 @@ const handleDownloadPDF = () => {
       key: 'tool_details',
       width: 180,
       render: (_, record) => (
-        <div style={{ 
-          background: '#f9f9f9', 
+        <div style={{
+          background: '#f9f9f9',
           padding: '8px',
           borderRadius: '4px',
         }}>
@@ -345,8 +345,8 @@ const handleDownloadPDF = () => {
       key: 'operator_details',
       width: 180,
       render: (_, record) => (
-        <div style={{ 
-          background: '#f9f9f9', 
+        <div style={{
+          background: '#f9f9f9',
           padding: '8px',
           borderRadius: '4px',
         }}>
@@ -367,8 +367,8 @@ const handleDownloadPDF = () => {
             <Text>Severity: </Text>
             <Tag color={
               record.severity === 'high' ? 'red' :
-              record.severity === 'medium' ? 'orange' :
-              'green'
+                record.severity === 'medium' ? 'orange' :
+                  'green'
             } style={{ fontSize: '12px', padding: '0 4px' }}>
               {record.severity.toUpperCase()}
             </Tag>
@@ -424,10 +424,10 @@ const handleDownloadPDF = () => {
               hour12: true
             })}
           </div>
-          <Tag 
+          <Tag
             color={record.officer_status?.toLowerCase() === 'rejected' ? 'error' : 'success'}
-            style={{ 
-              fontSize: '12px', 
+            style={{
+              fontSize: '12px',
               padding: '0 4px',
               marginTop: '4px'
             }}
@@ -446,7 +446,7 @@ const handleDownloadPDF = () => {
           <div style={{ marginBottom: '2px' }}>{record.supervisor_name}</div>
           <div style={{ color: '#666', fontSize: '13px' }}>ID: {record.supervisor_id}</div>
           <div style={{ color: '#666', fontSize: '13px' }}>
-            {record.supervisor_approval_date ? 
+            {record.supervisor_approval_date ?
               new Date(record.supervisor_approval_date).toLocaleString('en-US', {
                 year: 'numeric',
                 month: 'numeric',
@@ -456,10 +456,10 @@ const handleDownloadPDF = () => {
                 hour12: true
               }) : 'Pending'}
           </div>
-          <Tag 
+          <Tag
             color={record.supervisor_status?.toLowerCase() === 'rejected' ? 'error' : 'success'}
-            style={{ 
-              fontSize: '12px', 
+            style={{
+              fontSize: '12px',
               padding: '0 4px',
               marginTop: '4px'
             }}
@@ -488,14 +488,14 @@ const handleDownloadPDF = () => {
                 <FilterOutlined style={{ color: '#1890ff', marginRight: '8px' }} />
                 <Text>Filter Type:</Text>
                 <Button.Group style={{ marginLeft: '8px' }}>
-                  <Button 
+                  <Button
                     type={filterType === 'report_to_officer' ? 'primary' : 'default'}
                     onClick={() => setFilterType('report_to_officer')}
                     size="small"
                   >
                     Report to Officer Approval
                   </Button>
-                  <Button 
+                  <Button
                     type={filterType === 'officer_to_supervisor' ? 'primary' : 'default'}
                     onClick={() => setFilterType('officer_to_supervisor')}
                     size="small"
@@ -517,8 +517,8 @@ const handleDownloadPDF = () => {
                     size="small"
                     placeholder={['Start Date', 'End Date']}
                   />
-                  <Button 
-                    icon={<ReloadOutlined />} 
+                  <Button
+                    icon={<ReloadOutlined />}
                     onClick={handleShowAll}
                     size="small"
                   >

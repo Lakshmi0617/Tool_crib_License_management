@@ -2,12 +2,34 @@ from pydantic import BaseModel, constr, validator
 from typing import Optional, Literal
 from datetime import datetime
 
+class CompanyBase(BaseModel):
+    company_name: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+
+class CompanyCreate(CompanyBase):
+    pass
+
+class CompanyResponse(CompanyBase):
+    id: int
+    is_active: Optional[str] = "yes"
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+        orm_mode = True
+
 class UserBase(BaseModel):
     employee_id: str
     employee_name: str
     role: str
     department: str
     contact: str
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str

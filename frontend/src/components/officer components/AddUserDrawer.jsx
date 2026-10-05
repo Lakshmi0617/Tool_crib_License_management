@@ -26,20 +26,23 @@ import {
   ReloadOutlined
 } from '@ant-design/icons';
 
+import { API_BASE_URL } from '../../config';
+
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-const AddUserDrawer = ({ visible, onClose }) => {
+const AddUserDrawer = ({ visible, onClose, userInfo }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchUsers = async () => {
     try {
       setRefreshing(true);
-      const response = await fetch('http://172.18.100.33:8000/users');
+      const response = await fetch(`${API_BASE_URL}/users`);
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data);
@@ -53,15 +56,37 @@ const AddUserDrawer = ({ visible, onClose }) => {
     }
   };
 
-  // Initial fetch when component mounts
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/companies`);
+      if (!response.ok) throw new Error('Failed to fetch companies');
+      const data = await response.json();
+      setCompanies(data);
+    } catch (error) {
+      console.error('Failed to fetch companies:', error);
+    }
+  };
+
+  // Initial fetch when component mounts or becomes visible
   useEffect(() => {
     fetchUsers();
-  }, []);
+    fetchCompanies();
+  }, [visible]);
+
+  // Derived officer company info
+  const officerCompanyId = userInfo?.company_id;
+  const officerCompanyName = userInfo?.company_name || companies.find(c => c.id === officerCompanyId)?.company_name;
+
+  useEffect(() => {
+    if (showAddForm && officerCompanyId) {
+      form.setFieldsValue({ company_id: officerCompanyId });
+    }
+  }, [showAddForm, officerCompanyId, form]);
 
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      const response = await fetch('http://172.18.100.33:8000/register', {
+      const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,7 +97,8 @@ const AddUserDrawer = ({ visible, onClose }) => {
           password: values.password,
           role: values.role,
           department: values.department,
-          contact: values.contact
+          contact: values.contact,
+          company_id: values.company_id
         })
       });
 
@@ -107,7 +133,7 @@ const AddUserDrawer = ({ visible, onClose }) => {
       cancelText: 'No',
       onOk: async () => {
         try {
-          const response = await fetch(`http://172.18.100.33:8000/users/${employeeId}`, {
+          const response = await fetch(`${API_BASE_URL}/users/${employeeId}`, {
             method: 'DELETE',
           });
           if (!response.ok) throw new Error('Failed to delete user');
@@ -132,33 +158,52 @@ const AddUserDrawer = ({ visible, onClose }) => {
       dataIndex: 'employee_id',
       key: 'employee_id',
       width: 120,
+      sorter: (a, b) => {
+        const numA = parseInt(a.employee_id, 10);
+        const numB = parseInt(b.employee_id, 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        return String(a.employee_id || '').localeCompare(String(b.employee_id || ''));
+      },
     },
     {
       title: 'Name',
       dataIndex: 'employee_name',
       key: 'employee_name',
       width: 200,
+      sorter: (a, b) => (a.employee_name || '').localeCompare(b.employee_name || ''),
     },
     {
       title: 'Role',
       dataIndex: 'role',
       key: 'role',
       width: 120,
+      sorter: (a, b) => (a.role || '').localeCompare(b.role || ''),
       render: (role) => (
         <Tag color={
           role === 'officer' ? 'blue' :
-          role === 'supervisor' ? 'green' :
-          'orange'
+            role === 'supervisor' ? 'green' :
+              'orange'
         }>
-          {role.toUpperCase()}
+          {role ? role.toUpperCase() : ''}
         </Tag>
       ),
+    },
+    {
+      title: 'Company',
+      dataIndex: 'company_name',
+      key: 'company_name',
+      width: 160,
+      sorter: (a, b) => (a.company_name || '').localeCompare(b.company_name || ''),
+      render: (company_name) => company_name || '-',
     },
     {
       title: 'Department',
       dataIndex: 'department',
       key: 'department',
       width: 150,
+      sorter: (a, b) => (a.department || '').localeCompare(b.department || ''),
     },
     {
       title: 'Contact',
@@ -270,6 +315,42 @@ const AddUserDrawer = ({ visible, onClose }) => {
               size="large"
             />
           </Form.Item>
+
+          {officerCompanyName ? (
+            <Form.Item
+              label="Company Name"
+            >
+              <Input
+                prefix={<BankOutlined className="site-form-item-icon" />}
+                value={officerCompanyName}
+                disabled
+                size="large"
+                style={{ color: '#1f2937', fontWeight: 600, backgroundColor: '#f3f4f6' }}
+              />
+              <Form.Item name="company_id" noStyle initialValue={officerCompanyId}>
+                <input type="hidden" />
+              </Form.Item>
+            </Form.Item>
+          ) : (
+            <Form.Item
+              name="company_id"
+              label="Company Name"
+              rules={[{ required: true, message: 'Please select company' }]}
+            >
+              <Select
+                size="large"
+                placeholder="Select company"
+                suffixIcon={<BankOutlined />}
+                allowClear
+              >
+                {companies.map((comp) => (
+                  <Option key={comp.id} value={comp.id}>
+                    {comp.company_name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          )}
 
           <Form.Item
             name="department"

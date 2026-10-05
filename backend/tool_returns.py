@@ -8,7 +8,9 @@ from typing import List
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 
-router = APIRouter()
+from auth import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 @router.post("/tool-returns", response_model=ToolsReturnedResponse)
 def create_tool_return(return_data: ToolsReturnedCreate, db: Session = Depends(get_db)):

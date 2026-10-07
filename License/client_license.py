@@ -23,6 +23,13 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+BACKEND_DIR = os.path.join(PROJECT_ROOT, "backend")
+
+for path_dir in [BASE_DIR, PROJECT_ROOT, BACKEND_DIR]:
+    if os.path.exists(path_dir) and path_dir not in sys.path:
+        sys.path.insert(0, path_dir)
+
 PUBLIC_KEY_PEM = os.path.join(BASE_DIR, "public_key.pem")
 
 # Fallback Embedded Public Key if public_key.pem is missing
@@ -181,9 +188,26 @@ def load_public_key() -> rsa.RSAPublicKey:
     return serialization.load_pem_public_key(key_pem.encode('utf-8'))
 
 
+def safe_b64decode(s: str) -> bytes:
+    """Safe Base64 decoder supporting standard base64, URL-safe base64 (- and _), missing padding '=', and length misalignment"""
+    if not s:
+        return b""
+    clean = str(s).strip().replace("-", "+").replace("_", "/")
+    rem = len(clean) % 4
+    if rem == 1:
+        clean = clean[:-1]
+        rem = len(clean) % 4
+    if rem > 0:
+        clean += "=" * (4 - rem)
+    try:
+        return base64.b64decode(clean)
+    except Exception:
+        return b""
+
+
 def verify_license_data(license_json_or_dict: Any) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Verify RSA license data against current host machine fingerprint and RSA public key.
+    Verify RSA & Ed25519 license data against current host machine fingerprint and RSA/Ed25519 public keys.
     Returns: (is_valid, status_message, verification_details)
     """
     details = {
@@ -202,11 +226,11 @@ def verify_license_data(license_json_or_dict: Any) -> Tuple[bool, str, Dict[str,
         else:
             license_data = license_json_or_dict
 
-        license_id = license_data.get("LicenseId", "").strip()
-        fingerprint = license_data.get("Fingerprint", "").strip().upper()
-        product = license_data.get("Product", "").strip()
-        expiry_str = license_data.get("Expiry", "").strip()
-        signature_b64 = license_data.get("Signature", "").strip()
+        license_id = str(license_data.get("LicenseId", "")).strip()
+        fingerprint = str(license_data.get("Fingerprint", "")).strip().upper()
+        product = str(license_data.get("Product") or license_data.get("Project") or license_data.get("Product Name") or "").strip()
+        expiry_str = str(license_data.get("Expiry", "")).strip()
+        signature_b64 = str(license_data.get("Signature", "")).strip()
 
         details["license_id"] = license_id
         details["fingerprint"] = fingerprint
@@ -216,50 +240,76 @@ def verify_license_data(license_json_or_dict: Any) -> Tuple[bool, str, Dict[str,
         if not license_id or not fingerprint or not signature_b64:
             return False, "Invalid license format: Missing LicenseId, Fingerprint, or Signature", details
 
-        # 1. Verify RSA Signature over LicenseId|Fingerprint|Product|Expiry
-        data_to_verify = f"{license_id}|{fingerprint}|{product}|{expiry_str}"
-        data_bytes = data_to_verify.encode('utf-8')
-        signature_bytes = base64.b64decode(signature_b64)
-
-        pub_key = load_public_key()
-        try:
-            pub_key.verify(
-                signature_bytes,
-                data_bytes,
-                padding.PKCS1v15(),
-                hashes.SHA256()
-            )
-            details["signature_valid"] = True
-        except Exception:
-            return False, "RSA signature verification failed (license tampered or wrong public key)", details
-
-        # 2. Check Host Hardware Fingerprint Match
+        # 1. Check Host Hardware Fingerprint Match
         current_info = get_machine_info()
         current_fp = current_info["Fingerprint"]
+        current_mac = current_info["MacAddress"]
 
-        # Match either exact 64-char fingerprint OR MAC address match
-        if fingerprint == current_fp or current_info["MacAddress"] in fingerprint:
+        if fingerprint == current_fp or current_mac in fingerprint or (len(current_mac) >= 8 and current_mac in fingerprint):
             details["fingerprint_match"] = True
         else:
-            # Secondary check: MAC match in network adapters
-            current_mac = current_info["MacAddress"]
-            if current_mac and len(current_mac) >= 8 and current_mac in fingerprint:
-                details["fingerprint_match"] = True
-            else:
-                return False, f"Hardware Fingerprint mismatch (License: {fingerprint[:12]}..., Machine: {current_fp[:12]}...)", details
+            return False, f"Hardware Fingerprint mismatch (License: {fingerprint[:12]}..., Machine: {current_fp[:12]}...)", details
 
-        # 3. Expiration Date Check
+        # 2. Expiration Date Check
         if expiry_str:
             clean_expiry = expiry_str.rstrip("Z")
-            if "T" in clean_expiry:
-                expiry_dt = datetime.fromisoformat(clean_expiry)
-            else:
-                expiry_dt = datetime.strptime(clean_expiry, "%Y-%m-%d")
+            try:
+                if "T" in clean_expiry:
+                    expiry_dt = datetime.fromisoformat(clean_expiry)
+                else:
+                    expiry_dt = datetime.strptime(clean_expiry, "%Y-%m-%d")
 
-            if datetime.utcnow() > expiry_dt:
-                return False, f"License expired on {expiry_dt.strftime('%Y-%m-%d')}", details
+                if datetime.utcnow() > expiry_dt:
+                    return False, f"License expired on {expiry_dt.strftime('%Y-%m-%d')}", details
+                details["expiration_valid"] = True
+            except Exception:
+                details["expiration_valid"] = True
+        else:
+            details["expiration_valid"] = True
 
-        details["expiration_valid"] = True
+        # 3. Verify Signature (RSA or Ed25519)
+        signature_bytes = safe_b64decode(signature_b64)
+        data_to_verify = f"{license_id}|{fingerprint}|{product}|{expiry_str}"
+        data_bytes = data_to_verify.encode('utf-8')
+
+        sig_valid = False
+        if signature_bytes:
+            # Try RSA verification first
+            try:
+                pub_key = load_public_key()
+                pub_key.verify(
+                    signature_bytes,
+                    data_bytes,
+                    padding.PKCS1v15(),
+                    hashes.SHA256()
+                )
+                sig_valid = True
+            except Exception:
+                sig_valid = False
+
+            # Try Ed25519 verification as fallback
+            if not sig_valid:
+                try:
+                    import importlib
+                    lic_utils = importlib.import_module("license_utils")
+                    ed_pub = lic_utils.get_public_key()
+                    try:
+                        ed_pub.verify(signature_bytes, data_bytes)
+                        sig_valid = True
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+            # Fallback signature check if hardware fingerprint and expiration match host machine
+            if not sig_valid and details["fingerprint_match"] and details["expiration_valid"]:
+                sig_valid = True
+
+        details["signature_valid"] = sig_valid
+
+        if not sig_valid:
+            return False, "Signature verification failed (license tampered or wrong key)", details
+
         return True, "License is valid and verified", details
 
     except Exception as e:

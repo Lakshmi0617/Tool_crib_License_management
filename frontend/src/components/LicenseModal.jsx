@@ -16,6 +16,9 @@ export default function LicenseModal({ isOpen, onClose, isBlocking = false, onAc
 
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [fetchingCredentials, setFetchingCredentials] = useState(false);
+  const [fetchedCredentials, setFetchedCredentials] = useState('');
+  const [copiedCredentials, setCopiedCredentials] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -44,6 +47,44 @@ export default function LicenseModal({ isOpen, onClose, isBlocking = false, onAc
       setErrorMsg('Failed to connect to backend license service.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFetchCredentials = async () => {
+    setFetchingCredentials(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/license/fetch-request`, {
+        method: 'POST'
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.detail || 'Failed to fetch hardware request credentials');
+      }
+
+      const credText = data.credentials_text || data.stdout;
+      setFetchedCredentials(credText);
+      setSuccessMsg('⚡ Hardware machine request credentials fetched successfully from client_license.py!');
+
+      if (data.machine_info?.MacAddress) {
+        setSystemInfo(prev => ({
+          ...prev,
+          primary_mac: data.machine_info.MacAddress
+        }));
+      }
+    } catch (err) {
+      setErrorMsg(`Fetch Failed: ${err.message}`);
+    } finally {
+      setFetchingCredentials(false);
+    }
+  };
+
+  const handleCopyCredentials = () => {
+    if (fetchedCredentials) {
+      navigator.clipboard.writeText(fetchedCredentials);
+      setCopiedCredentials(true);
+      setTimeout(() => setCopiedCredentials(false), 2000);
     }
   };
 
@@ -225,24 +266,121 @@ export default function LicenseModal({ isOpen, onClose, isBlocking = false, onAc
               }}>
                 {systemInfo?.primary_mac || 'Loading...'}
               </code>
-              <button
-                type="button"
-                onClick={handleCopyMac}
-                style={{
-                  backgroundColor: copied ? '#16a34a' : '#0f172a',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '6px 14px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {copied ? '✓ Copied!' : '📋 Copy MAC'}
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleFetchCredentials}
+                  disabled={fetchingCredentials}
+                  style={{
+                    backgroundColor: '#0284c7',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: fetchingCredentials ? 'not-allowed' : 'pointer',
+                    opacity: fetchingCredentials ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {fetchingCredentials ? '⚡ Running...' : '⚡ Fetch Credentials'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyMac}
+                  style={{
+                    backgroundColor: copied ? '#16a34a' : '#0f172a',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {copied ? '✓ Copied!' : '📋 Copy MAC'}
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Fetched Machine Hardware Credentials Request Box */}
+          <div style={{
+            backgroundColor: '#f8fafc',
+            border: '1px solid #cbd5e1',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '20px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>💻 Fetched Hardware Machine Request Credentials</span>
+                <span style={{ fontSize: '0.72rem', backgroundColor: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>
+                  client_license.py --request
+                </span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleFetchCredentials}
+                  disabled={fetchingCredentials}
+                  style={{
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: fetchingCredentials ? 'not-allowed' : 'pointer',
+                    opacity: fetchingCredentials ? 0.7 : 1
+                  }}
+                >
+                  {fetchingCredentials ? '⚡ Running...' : '⚡ Fetch'}
+                </button>
+                {fetchedCredentials && (
+                  <button
+                    type="button"
+                    onClick={handleCopyCredentials}
+                    style={{
+                      backgroundColor: copiedCredentials ? '#16a34a' : '#475569',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {copiedCredentials ? '✓ Copied!' : '📋 Copy Credentials'}
+                  </button>
+                )}
+              </div>
+            </div>
+            <textarea
+              rows={8}
+              readOnly
+              value={fetchedCredentials || 'Click the "Fetch" button to automatically execute python License/client_license.py --request and display machine credentials here...'}
+              style={{
+                width: '100%',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                padding: '10px 12px',
+                fontFamily: 'monospace',
+                fontSize: '0.8rem',
+                boxSizing: 'border-box',
+                backgroundColor: '#ffffff',
+                color: fetchedCredentials ? '#0f172a' : '#94a3b8',
+                resize: 'vertical'
+              }}
+            />
           </div>
 
           {/* Active License Status Banner */}

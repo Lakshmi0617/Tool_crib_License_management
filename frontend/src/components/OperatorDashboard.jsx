@@ -58,7 +58,7 @@ import TotalToolsUsed from './operatorcomponents/Totaltoolsused';
 import InUse from './operatorcomponents/inuse';
 import ReturnedTools from './operatorcomponents/Returnedtools';
 import ReportedIssues from './operatorcomponents/Reportedissues';
-import { getAuthHeaders } from '../config';
+import { API_BASE_URL, getAuthHeaders } from '../config';
 
 const { Header, Content, Sider } = Layout;
 const { Option } = Select;
@@ -162,7 +162,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       }
 
       // First fetch tools
-      const toolsResponse = await fetch('http://localhost:8000/api/tools', {
+      const toolsResponse = await fetch(`${API_BASE_URL}/api/tools`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       setTools(mappedTools);
 
       // Then fetch requests for this specific operator
-      const requestsResponse = await fetch(`http://localhost:8000/api/tool-requests?operator_id=${parsedUser.employee_id}`, {
+      const requestsResponse = await fetch(`${API_BASE_URL}/api/tool-requests?operator_id=${parsedUser.employee_id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -277,9 +277,9 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         (async () => {
           const authHeaders = getAuthHeaders();
           const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-            fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}&status=approved&collected=yes&returned=no`, { headers: authHeaders }),
-            fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
-            fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
+            fetch(`${API_BASE_URL}/api/tool-requests?operator_id=${currentUserInfo.employee_id}&status=approved&collected=yes&returned=no`, { headers: authHeaders }),
+            fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`${API_BASE_URL}/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
           ]);
 
           const [requestsData, returnsData, issuesData] = await Promise.all([
@@ -337,7 +337,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         })(),
         // Fetch operator's tool returns
         (async () => {
-          const response = await fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
+          const response = await fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch returns');
           const data = await response.json();
           setReturns(data);
@@ -346,8 +346,8 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         (async () => {
           const authHeaders = getAuthHeaders();
           const [requestsResponse, returnsResponse] = await Promise.all([
-            fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
-            fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders })
+            fetch(`${API_BASE_URL}/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders })
           ]);
 
           const [requestsData, returnsData] = await Promise.all([
@@ -371,7 +371,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         })(),
         // Fetch operator's reported issues
         (async () => {
-          const response = await fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
+          const response = await fetch(`${API_BASE_URL}/api/tool-issues/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch issues');
           const data = await response.json();
           setIssues(data);
@@ -390,7 +390,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
   const fetchTools = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/tools', { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/api/tools`, { headers: getAuthHeaders() });
       if (!response.ok) {
         throw new Error('Failed to fetch tools');
       }
@@ -472,7 +472,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
 
   const checkExistingIssues = async (toolSlNo) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/tool-issues/tool/${toolSlNo}`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/api/tool-issues/tool/${toolSlNo}`, { headers: getAuthHeaders() });
       if (!response.ok) {
         throw new Error('Failed to check existing issues');
       }
@@ -526,7 +526,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       // Log the request payload for debugging
       console.log('Issue Report Payload:', payload);
 
-      const response = await fetch('http://localhost:8000/api/tool-issues', {
+      const response = await fetch(`${API_BASE_URL}/api/tool-issues`, {
         method: 'POST',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
@@ -725,9 +725,9 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         case 'in_use': {
           const authHeaders = getAuthHeaders();
           const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-            fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
-            fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
-            fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
+            fetch(`${API_BASE_URL}/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+            fetch(`${API_BASE_URL}/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
           ]);
 
           const [requestsData, returnsData, issuesData] = await Promise.all([
@@ -753,12 +753,12 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           break;
         }
         case 'returned':
-          const returnedResponse = await fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
+          const returnedResponse = await fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!returnedResponse.ok) throw new Error('Failed to fetch returned data');
           data = await returnedResponse.json();
           break;
         case 'issues':
-          const issuesResponse = await fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
+          const issuesResponse = await fetch(`${API_BASE_URL}/api/tool-issues/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
           if (!issuesResponse.ok) throw new Error('Failed to fetch issues data');
           data = await issuesResponse.json();
           break;
@@ -783,7 +783,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
       }
 
       // Create the tool return record
-      const returnResponse = await fetch('http://localhost:8000/api/tool-returns', {
+      const returnResponse = await fetch(`${API_BASE_URL}/api/tool-returns`, {
         method: 'POST',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
@@ -820,9 +820,9 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
           if (currentUserInfo?.employee_id) {
             const authHeaders = getAuthHeaders();
             const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-              fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
-              fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
-              fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
+              fetch(`${API_BASE_URL}/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+              fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+              fetch(`${API_BASE_URL}/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
             ]);
 
             const [requestsData, returnsData, issuesData] = await Promise.all([
@@ -908,7 +908,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
         return;
       }
 
-      const confirmResponse = await fetch(`http://localhost:8000/api/tool-requests/${response.id}/collect`, {
+      const confirmResponse = await fetch(`${API_BASE_URL}/api/tool-requests/${response.id}/collect`, {
         method: 'PUT',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
@@ -1665,7 +1665,7 @@ const OperatorDashboard = ({ userInfo, onLogout }) => {
                     project_details: values.project_details
                   };
 
-                  const response = await fetch('http://localhost:8000/api/tool-requests', {
+                  const response = await fetch(`${API_BASE_URL}/api/tool-requests`, {
                     method: 'POST',
                     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(payload)

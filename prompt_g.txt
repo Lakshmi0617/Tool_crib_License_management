@@ -1,0 +1,7 @@
+see basically when u process a folder in order to calculate the cost for each file and report generation u are creating another endpoint and doing calculation seperately and some 3d viewer thing also so what i wanted is like when i upload one file and how we estimated cost by passing to different endpoints and finally we were also generating report for that file now same way i wanted for batch folder processing only change is the report sd be saved in a destination folder and processing sd be done in sequence so that the endpoints wont get crashed and we keep the same logic for cost estimation and report generation //so refer this below workflow and keep the same dont change anything
+
+MillingProcess.jsx
+ 
+
+Milling_process.py
+ 

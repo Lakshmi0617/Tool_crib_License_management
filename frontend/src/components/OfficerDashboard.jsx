@@ -54,7 +54,7 @@ import cmtisLogo from '../assets/cmtis.png';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../styles/Dashboard.css';
-import { getAuthHeaders } from '../config';
+import { API_BASE_URL, getAuthHeaders } from '../config';
 import PendingRequestsDrawer from './officer components/PendingRequestsDrawer';
 import AddUserDrawer from './officer components/AddUserDrawer';
 import ItemIssuesHistory from './officer components/itemissueshistory';
@@ -124,7 +124,7 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
   const handleSave = async (record) => {
     try {
       const row = await form.validateFields();
-      const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/tools/${record.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -220,10 +220,10 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
         'Pragma': 'no-cache'
       });
       const [toolsResponse, requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/tools', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tool-requests/all', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tool-returns/all', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders })
+        fetch(`${API_BASE_URL}/api/tools`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-requests/all`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-returns/all`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-issues/all`, { headers: authHeaders })
       ]);
 
       // Check if any response failed
@@ -370,8 +370,8 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
         'Pragma': 'no-cache'
       });
       const [issuesResponse, toolsResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tools', { headers: authHeaders })
+        fetch(`${API_BASE_URL}/api/tool-issues/all`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tools`, { headers: authHeaders })
       ]);
 
       if (!issuesResponse.ok || !toolsResponse.ok) {
@@ -427,7 +427,7 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
   // Add function to fetch pending tool requests
   const fetchPendingToolRequests = async () => {
     try {
-      const response = await fetch('http://localhost:8000/new-tool-requests/all-requests', { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/new-tool-requests/all-requests`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch requests');
       const data = await response.json();
       setPendingToolRequests(data);
@@ -515,7 +515,7 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
         officer_name: currentUserInfo?.employee_name
       });
 
-      const response = await fetch(`http://localhost:8000/api/tool-issues/${issueId}/officer-action`, {
+      const response = await fetch(`${API_BASE_URL}/api/tool-issues/${issueId}/officer-action`, {
         method: 'PUT',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
@@ -589,7 +589,7 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
       cancelText: 'No',
       onOk: async () => {
         try {
-          const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
+          const response = await fetch(`${API_BASE_URL}/api/tools/${record.id}`, {
             method: 'DELETE',
           });
 
@@ -1178,21 +1178,21 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
         fetchIssues(),
         // Fetch pending issues
         (async () => {
-          const response = await fetch('http://localhost:8000/api/tool-issues/pending', { headers: getAuthHeaders() });
+          const response = await fetch(`${API_BASE_URL}/api/tool-issues/pending`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch pending issues');
           const data = await response.json();
           setPendingIssues(data);
         })(),
         // Fetch supervisor approved issues
         (async () => {
-          const response = await fetch('http://localhost:8000/api/tool-issues/supervisor-approved', { headers: getAuthHeaders() });
+          const response = await fetch(`${API_BASE_URL}/api/tool-issues/supervisor-approved`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch supervisor approved issues');
           const data = await response.json();
           setSupervisorApprovedIssues(data);
         })(),
         // Fetch pending tool requests
         (async () => {
-          const response = await fetch('http://localhost:8000/new-tool-requests/pending', { headers: getAuthHeaders() });
+          const response = await fetch(`${API_BASE_URL}/new-tool-requests/pending`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch pending requests');
           const data = await response.json();
           setPendingToolRequests(data);
@@ -1212,7 +1212,7 @@ const OfficerDashboard = ({ userInfo, onLogout, onOpenLicenseModal }) => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        await fetch(`http://localhost:8000/logout?employee_id=${user.employee_id}`, {
+        await fetch(`${API_BASE_URL}/logout?employee_id=${user.employee_id}`, {
           method: 'POST',
           headers: getAuthHeaders({
             'Content-Type': 'application/json',

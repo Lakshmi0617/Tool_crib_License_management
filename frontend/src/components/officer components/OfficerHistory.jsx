@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Space, Tag, Typography, Card, Row, Col, Statistic } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 import { EnvironmentOutlined } from '@ant-design/icons';
+import { API_BASE_URL } from '../../config';
 
 const { Text } = Typography;
 
@@ -23,7 +24,7 @@ const OfficerHistory = ({ officerId }) => {
       setLoading(true);
       try {
         // Fetch all tools first
-        const toolsResponse = await fetch('http://localhost:8000/api/tools');
+        const toolsResponse = await fetch(`${API_BASE_URL}/api/tools`);
         const toolsData = await toolsResponse.json();
         const toolsMap = toolsData.reduce((acc, tool) => {
           acc[tool.Sl_no] = {
@@ -36,7 +37,7 @@ const OfficerHistory = ({ officerId }) => {
         }, {});
 
         // Fetch new tool requests history
-        const requestsResponse = await fetch('http://localhost:8000/new-tool-requests/all-requests');
+        const requestsResponse = await fetch(`${API_BASE_URL}/new-tool-requests/all-requests`);
         const requestsData = await requestsResponse.json();
         const officerRequests = requestsData.filter(request =>
           request.officer_id === officerId
@@ -53,7 +54,7 @@ const OfficerHistory = ({ officerId }) => {
         setRequestHistory(mappedRequests);
 
         // Fetch issues history
-        const issuesResponse = await fetch('http://localhost:8000/api/tool-issues/all');
+        const issuesResponse = await fetch(`${API_BASE_URL}/api/tool-issues/all`);
         const issuesData = await issuesResponse.json();
         const officerIssues = issuesData.filter(issue =>
           issue.officer_id === officerId

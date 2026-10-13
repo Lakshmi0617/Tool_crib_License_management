@@ -1,5 +1,5 @@
-// Centralized API Base URL dynamically targeting the current host IP/domain
-export const API_BASE_URL = `http://${window.location.hostname}:8000`;
+// Centralized API Base URL dynamically targeting env variable or current host IP/domain
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000`;
 
 export const getAuthHeaders = (extraHeaders = {}) => {
   const token = localStorage.getItem('token');

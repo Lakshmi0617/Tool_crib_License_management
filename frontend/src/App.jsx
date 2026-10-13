@@ -9,8 +9,7 @@ import LicenseModal from './components/LicenseModal'
 import LicenseBanner from './components/LicenseBanner'
 import './App.css'
 
-// API base URL
-const API_BASE_URL = 'http://localhost:8000';
+import { API_BASE_URL } from './config';
 
 // Global handler for automatic logout on session expiration
 let globalLogoutHandler = null;

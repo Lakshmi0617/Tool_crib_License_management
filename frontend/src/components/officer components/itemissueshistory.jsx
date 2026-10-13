@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DatePicker, Button, Space, Typography, message, Modal, Table, Tag, Card, Divider } from 'antd';
 import { DownloadOutlined, FilterOutlined, ReloadOutlined, WarningOutlined, EnvironmentOutlined, ToolOutlined } from '@ant-design/icons';
 import jsPDF from 'jspdf';
+import { API_BASE_URL } from '../../config';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -19,7 +20,7 @@ const ItemIssuesHistory = () => {
   const fetchIssues = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/tool-issues/all');
+      const response = await fetch(`${API_BASE_URL}/api/tool-issues/all`);
       if (!response.ok) {
         throw new Error('Failed to fetch issues');
       }

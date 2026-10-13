@@ -1,19 +1,34 @@
-# This is a sample Python script.
+import sys
+import traceback
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+# Top-level exception hook to catch any error during imports or startup and keep console open
+def uncaught_exception_handler(exctype, value, tb):
+    print("\n" + "=" * 70)
+    print(" [FATAL ERROR DETECTED ON STARTUP] ")
+    print("=" * 70)
+    traceback.print_exception(exctype, value, tb)
+    print("=" * 70)
+    print("\nPlease read the error traceback above to diagnose the issue.")
+    input("\nPress ENTER to exit...")
 
+sys.excepthook = uncaught_exception_handler
+
+print("[1/5] Starting ToolCrib Application...")
 import logging
 import uvicorn
-import sys
 import os
 import platform
+import time
+
+print("[2/5] Loading FastAPI & Core Dependencies...")
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
+
+print("[3/5] Loading Routers & Database Modules...")
 from Register import router as register_router
 from ToolsList import router as tools_router
 from tool_requests import router as tool_requests_router
@@ -25,9 +40,10 @@ from db import engine, Base, db, setup_database, SessionLocal
 from models import User, ToolsList
 import new_tool_requests
 from typing import Callable
-import time
 from cachetools import TTLCache, cached
 from functools import lru_cache
+
+print("[4/5] Configuring Middleware & Application Routers...")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -209,16 +225,61 @@ async def health_check():
     return {"status": "ok", "message": "API is running"}
 
 
-# Press the green button in the gutter to run the script.
+# Serve React frontend static assets when packaged/built
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+dist_dir = os.path.join(current_dir, "dist")
+if not os.path.exists(dist_dir):
+    dist_dir = os.path.abspath(os.path.join(current_dir, "..", "frontend", "dist"))
+
+if os.path.exists(dist_dir):
+    logger.info(f"Serving frontend static files from: {dist_dir}")
+    assets_dir = os.path.join(dist_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}", tags=["Frontend"])
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        file_path = os.path.join(dist_dir, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(dist_dir, "index.html"))
+
+
+
+import webbrowser
+import threading
+
+def open_browser():
+    time.sleep(1.5)
+    try:
+        webbrowser.open("http://localhost:8000")
+    except Exception as e:
+        logger.warning(f"Could not automatically open browser: {e}")
+
 if __name__ == "__main__":
-    logger.info("Starting Tool Crib API Server")
-    uvicorn.run(
-        "main:app",
-        host="localhost",
-        port=8000,
-        reload=True,
-        workers=1,
-        log_level="debug"
-    )
+    try:
+        logger.info("Starting Tool Crib Application Server...")
+        is_frozen = getattr(sys, 'frozen', False)
+        
+        if is_frozen:
+            print("==================================================")
+            print(" ToolCrib Application Server Starting...")
+            print(" Access URL: http://localhost:8000")
+            print("==================================================")
+            # Auto open browser in packaged mode
+            threading.Thread(target=open_browser, daemon=True).start()
+            uvicorn.run(app, host="0.0.0.0", port=8000, reload=False, log_level="info")
+        else:
+            uvicorn.run("main:app", host="localhost", port=8000, reload=True, workers=1, log_level="debug")
+    except Exception as ex:
+        print("\n" + "="*50)
+        print(f"FATAL ERROR ON STARTUP: {ex}")
+        print("="*50 + "\n")
+        input("Press Enter to exit...")
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

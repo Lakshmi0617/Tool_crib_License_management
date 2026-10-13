@@ -17,7 +17,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined
 } from '@ant-design/icons';
-import { getAuthHeaders } from '../../config';
+import { API_BASE_URL, getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -48,9 +48,9 @@ const TotalToolsUsed = ({ currentUserInfo, tools, onCardClick }) => {
     try {
       const authHeaders = getAuthHeaders();
       const [requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-        fetch(`http://localhost:8000/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
-        fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
-        fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
+        fetch(`${API_BASE_URL}/api/tool-requests?operator_id=${currentUserInfo.employee_id}`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-issues/${currentUserInfo.employee_id}`, { headers: authHeaders })
       ]);
 
       const [requestsData, returnsData, issuesData] = await Promise.all([

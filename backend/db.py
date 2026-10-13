@@ -12,8 +12,12 @@ logger = logging.getLogger(__name__)
 import os
 from dotenv import load_dotenv
 
+from db_setup_gui import prompt_db_credentials
+
 # Load environment variables from .env file if present
 load_dotenv()
+
+env_path = os.path.abspath(".env")
 
 # Database configuration
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -22,40 +26,50 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "root1234")
 DB_NAME = os.getenv("DB_NAME", "ToolCrib_v1")
 
-# SQLAlchemy setup with optimized connection pooling
 DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
-def create_db_engine(retries=5, delay=2):
+def create_db_engine(retries=2, delay=1):
+    global DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DATABASE_URL
     for attempt in range(retries):
+        current_url = os.getenv("DATABASE_URL", f"postgresql://{os.getenv('DB_USER','postgres')}:{os.getenv('DB_PASSWORD','') }@{os.getenv('DB_HOST','localhost')}:{os.getenv('DB_PORT','5432')}/{os.getenv('DB_NAME','ToolCrib_v1')}")
         try:
             engine = create_engine(
-                DATABASE_URL,
+                current_url,
                 poolclass=QueuePool,
-                pool_size=20,  # Maximum number of connections in the pool
-                max_overflow=30,  # Maximum number of connections that can be created beyond pool_size
-                pool_timeout=30,  # Timeout for getting a connection from the pool
-                pool_pre_ping=True,  # Enable connection health checks
-                pool_recycle=3600,  # Recycle connections after 1 hour
-                connect_args={
-                    'connect_timeout': 10,  # Connection timeout in seconds
-                    'keepalives': 1,        # Enable TCP keepalive
-                    'keepalives_idle': 30,  # Idle time before sending keepalive
-                    'keepalives_interval': 10,  # Interval between keepalives
-                    'keepalives_count': 5    # Number of keepalive attempts
-                }
+                pool_size=20,
+                max_overflow=30,
+                pool_timeout=30,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                connect_args={'connect_timeout': 4}
             )
-            # Test the connection
             engine.connect().close()
             logger.info("Database connection established successfully")
             return engine
         except Exception as e:
-            if attempt < retries - 1:
-                logger.warning(f"Database connection attempt {attempt + 1} failed: {str(e)}")
-                time.sleep(delay)
-                continue
-            else:
-                logger.error(f"Failed to connect to database after {retries} attempts: {str(e)}")
-                raise
+            logger.warning(f"Database connection attempt failed: {str(e)}")
+            # Show GUI dialog for entering DB credentials
+            print("\nDatabase connection could not be established.")
+            print("Opening Database Credentials Configuration Window...")
+            prompt_db_credentials(env_path)
+            load_dotenv(override=True)
+            DB_HOST = os.getenv("DB_HOST", "localhost")
+            DB_PORT = os.getenv("DB_PORT", "5432")
+            DB_USER = os.getenv("DB_USER", "postgres")
+            DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+            DB_NAME = os.getenv("DB_NAME", "ToolCrib_v1")
+            DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+
+    # Create final engine instance
+    engine = create_engine(
+        DATABASE_URL,
+        poolclass=QueuePool,
+        pool_size=20,
+        max_overflow=30,
+        pool_timeout=30,
+        pool_pre_ping=True
+    )
+    return engine
 
 # Create engine with retry logic
 engine = create_db_engine()

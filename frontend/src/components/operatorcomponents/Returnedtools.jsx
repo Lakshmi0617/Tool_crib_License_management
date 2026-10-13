@@ -13,7 +13,7 @@ import {
   CheckCircleOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
-import { getAuthHeaders } from '../../config';
+import { API_BASE_URL, getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -30,7 +30,7 @@ const ReturnedTools = ({ currentUserInfo, onCardClick }) => {
     try {
       setLoading(true);
 
-      const response = await fetch(`http://localhost:8000/api/tool-returns/operator/${currentUserInfo.employee_id}?status=collected`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/api/tool-returns/operator/${currentUserInfo.employee_id}?status=collected`, { headers: getAuthHeaders() });
 
       if (!response.ok) {
         throw new Error('Failed to fetch data');

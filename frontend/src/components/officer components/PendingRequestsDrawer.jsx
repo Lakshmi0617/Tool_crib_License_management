@@ -4,7 +4,7 @@ import { CheckOutlined, CloseOutlined, ToolOutlined, DownloadOutlined } from '@a
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import dayjs from 'dayjs';
-import { getAuthHeaders } from '../../config';
+import { API_BASE_URL, getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -21,7 +21,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
         status: 'approved'
       };
 
-      const response = await fetch(`http://localhost:8000/new-tool-requests/${requestId}/approve`, {
+      const response = await fetch(`${API_BASE_URL}/new-tool-requests/${requestId}/approve`, {
         method: 'PUT',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ const PendingRequestsDrawer = ({ currentUserInfo, pendingRequests, onRequestsCha
         status: 'rejected'
       };
 
-      const response = await fetch(`http://localhost:8000/new-tool-requests/${requestId}/reject`, {
+      const response = await fetch(`${API_BASE_URL}/new-tool-requests/${requestId}/reject`, {
         method: 'PUT',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',

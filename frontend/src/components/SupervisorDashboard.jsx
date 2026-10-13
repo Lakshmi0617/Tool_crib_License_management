@@ -67,7 +67,7 @@ import ToolRequestsHistory from './supervisor components/ToolRequestsHistory';
 import IssuesHistory from './supervisor components/IssuesHistory';
 import ToolReturnsHistory from './supervisor components/ToolReturnsHistory';
 import SupervisorHistory from './supervisor components/SupervisorHistory';
-import { getAuthHeaders } from '../config';
+import { API_BASE_URL, getAuthHeaders } from '../config';
 
 const { Header, Content, Sider } = Layout;
 const { Option } = Select;
@@ -157,7 +157,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   const handleSave = async (record) => {
     try {
       const row = await form.validateFields();
-      const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/tools/${record.id}`, {
         method: 'PUT',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
@@ -195,7 +195,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       cancelText: 'No',
       onOk: async () => {
         try {
-          const response = await fetch(`http://localhost:8000/api/tools/${record.id}`, {
+          const response = await fetch(`${API_BASE_URL}/api/tools/${record.id}`, {
             method: 'DELETE',
             headers: getAuthHeaders()
           });
@@ -237,7 +237,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        await fetch(`http://localhost:8000/logout?employee_id=${user.employee_id}`, {
+        await fetch(`${API_BASE_URL}/logout?employee_id=${user.employee_id}`, {
           method: 'POST',
           headers: getAuthHeaders({
             'Content-Type': 'application/json',
@@ -267,10 +267,10 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       const authHeaders = getAuthHeaders();
       // Fetch tools, requests, returns and issues in parallel
       const [toolsResponse, requestsResponse, returnsResponse, issuesResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/tools', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tool-requests?status=approved&collected=yes&returned=no', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tool-returns/pending', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders })
+        fetch(`${API_BASE_URL}/api/tools`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-requests?status=approved&collected=yes&returned=no`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-returns/pending`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-issues/all`, { headers: authHeaders })
       ]);
 
       if (!toolsResponse.ok || !requestsResponse.ok || !returnsResponse.ok || !issuesResponse.ok) {
@@ -439,7 +439,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
     // Fetch all tool requests from backend
     const fetchRequests = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/tool-requests', { headers: getAuthHeaders() });
+        const response = await fetch(`${API_BASE_URL}/api/tool-requests`, { headers: getAuthHeaders() });
         if (!response.ok) throw new Error('Failed to fetch requests');
         const data = await response.json();
 
@@ -477,8 +477,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
       const authHeaders = getAuthHeaders();
       // Fetch both pending and collected returns
       const [pendingResponse, collectedResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/tool-returns/pending', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tool-returns/all?status=collected', { headers: authHeaders })
+        fetch(`${API_BASE_URL}/api/tool-returns/pending`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tool-returns/all?status=collected`, { headers: authHeaders })
       ]);
 
       if (!pendingResponse.ok || !collectedResponse.ok) {
@@ -505,7 +505,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Add function to only fetch pending returns
   const fetchPendingReturns = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/tool-returns/pending', { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/api/tool-returns/pending`, { headers: getAuthHeaders() });
       if (!response.ok) {
         throw new Error('Failed to fetch pending returns');
       }
@@ -521,10 +521,10 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
   const handleStatusChange = async (requestId, newStatus) => {
     try {
-      let endpoint = `http://localhost:8000/api/tool-requests/${requestId}`;
+      let endpoint = `${API_BASE_URL}/api/tool-requests/${requestId}`;
 
       if (newStatus === 'approved') {
-        endpoint = `http://localhost:8000/api/tool-requests/${requestId}/approve`;
+        endpoint = `${API_BASE_URL}/api/tool-requests/${requestId}/approve`;
         const response = await fetch(endpoint, {
           method: 'PUT',
           headers: getAuthHeaders({
@@ -1110,7 +1110,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   // Update handleCollectTool function
   const handleCollectTool = async (returnId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/tool-returns/${returnId}/collect`, {
+      const response = await fetch(`${API_BASE_URL}/api/tool-returns/${returnId}/collect`, {
         method: 'PATCH',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
@@ -1252,8 +1252,8 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
     try {
       const authHeaders = getAuthHeaders();
       const [issuesResponse, toolsResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/tool-issues/all', { headers: authHeaders }),
-        fetch('http://localhost:8000/api/tools', { headers: authHeaders })
+        fetch(`${API_BASE_URL}/api/tool-issues/all`, { headers: authHeaders }),
+        fetch(`${API_BASE_URL}/api/tools`, { headers: authHeaders })
       ]);
 
       const [issues, tools] = await Promise.all([
@@ -1285,7 +1285,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
   const handleIssueApproval = async (issueId, status) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/api/tool-issues/${issueId}/supervisor-action`,
+        `${API_BASE_URL}/api/tool-issues/${issueId}/supervisor-action`,
         {
           method: 'PUT',
           headers: getAuthHeaders({
@@ -1333,14 +1333,14 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
         // Fetch tool requests
         if (currentUserInfo?.employee_id) {
-          const response = await fetchWithRetry(`http://localhost:8000/new-tool-requests/supervisor/${currentUserInfo.employee_id}`);
+          const response = await fetchWithRetry(`${API_BASE_URL}/new-tool-requests/supervisor/${currentUserInfo.employee_id}`);
           if (!isSubscribed) return;
           const data = await response.json();
           setPendingToolRequests(data.filter(req => req.status === 'pending'));
         }
 
         // Fetch tool returns
-        const returnsResponse = await fetchWithRetry('http://localhost:8000/api/tool-returns/pending');
+        const returnsResponse = await fetchWithRetry(`${API_BASE_URL}/api/tool-returns/pending`);
         if (!isSubscribed) return;
         const returnsData = await returnsResponse.json();
         setToolSubmitRequests(returnsData);
@@ -1399,7 +1399,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/new-tool-requests/supervisor/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/new-tool-requests/supervisor/${currentUserInfo.employee_id}`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch tool requests');
       const data = await response.json();
       setPendingToolRequests(data);
@@ -1423,7 +1423,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
         await fetchPendingToolRequests();
 
         // Fetch tool returns
-        const returnsResponse = await fetchWithRetry('http://localhost:8000/api/tool-returns/pending');
+        const returnsResponse = await fetchWithRetry(`${API_BASE_URL}/api/tool-returns/pending`);
         const returnsData = await returnsResponse.json();
         setToolSubmitRequests(returnsData);
       } catch (error) {
@@ -1447,7 +1447,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
             await fetchTools();
             break;
           case 'requests':
-            const response = await fetch('http://localhost:8000/api/tool-requests', { headers: getAuthHeaders() });
+            const response = await fetch(`${API_BASE_URL}/api/tool-requests`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error('Failed to fetch requests');
             const data = await response.json();
             setRequests(data);
@@ -1457,7 +1457,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
             await fetchIssues();
             break;
           case 'returns':
-            const returnsResponse = await fetch('http://localhost:8000/api/tool-returns/pending', { headers: getAuthHeaders() });
+            const returnsResponse = await fetch(`${API_BASE_URL}/api/tool-returns/pending`, { headers: getAuthHeaders() });
             if (!returnsResponse.ok) throw new Error('Failed to fetch returns');
             const returnsData = await returnsResponse.json();
             setToolSubmitRequests(returnsData);
@@ -1489,7 +1489,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           await fetchTools();
           break;
         case 'requests':
-          const response = await fetch('http://localhost:8000/api/tool-requests', { headers: getAuthHeaders() });
+          const response = await fetch(`${API_BASE_URL}/api/tool-requests`, { headers: getAuthHeaders() });
           if (!response.ok) throw new Error('Failed to fetch requests');
           const data = await response.json();
           setRequests(data);
@@ -1499,7 +1499,7 @@ const SupervisorDashboard = ({ userInfo, onLogout }) => {
           await fetchIssues();
           break;
         case 'returns':
-          const returnsResponse = await fetch('http://localhost:8000/api/tool-returns/pending', { headers: getAuthHeaders() });
+          const returnsResponse = await fetch(`${API_BASE_URL}/api/tool-returns/pending`, { headers: getAuthHeaders() });
           if (!returnsResponse.ok) throw new Error('Failed to fetch returns');
           const returnsData = await returnsResponse.json();
           setToolSubmitRequests(returnsData);

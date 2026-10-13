@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Statistic, Space, Typography, message } from 'antd';
 import { WarningOutlined } from '@ant-design/icons';
 import axios from 'axios';
-import { getAuthHeaders } from '../../config';
+import { API_BASE_URL, getAuthHeaders } from '../../config';
 
 const { Text } = Typography;
 
@@ -15,7 +15,7 @@ const ReportedIssues = ({ currentUserInfo, onCardClick }) => {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/api/tool-issues/${currentUserInfo.employee_id}?officer_status=approved`, { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/api/tool-issues/${currentUserInfo.employee_id}?officer_status=approved`, { headers: getAuthHeaders() });
 
       if (!response.ok) {
         throw new Error('Failed to fetch issues data');

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { API_BASE_URL } from '../config';
 
 export default function LicenseModal({ isOpen, onClose, isBlocking = false, onActivated }) {
   const [systemInfo, setSystemInfo] = useState(null);

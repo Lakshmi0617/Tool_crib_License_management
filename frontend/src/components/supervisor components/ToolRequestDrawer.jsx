@@ -15,7 +15,7 @@ import {
   Modal,
   Tooltip
 } from 'antd';
-import { getAuthHeaders } from '../../config';
+import { API_BASE_URL, getAuthHeaders } from '../../config';
 import {
   ToolOutlined,
   SaveOutlined,
@@ -320,7 +320,7 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
 
   const fetchExistingTools = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/tools', { headers: getAuthHeaders() });
+      const response = await fetch(`${API_BASE_URL}/api/tools`, { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch tools');
       const data = await response.json();
       setExistingTools(data);
@@ -412,7 +412,7 @@ const ToolRequestDrawer = ({ visible, onClose, currentUserInfo, onRequestSubmitt
         tool_sl_no: selectedTool?.Sl_no // Add the Sl.no if it's an existing tool
       };
 
-      const response = await fetch('http://localhost:8000/new-tool-requests', {
+      const response = await fetch(`${API_BASE_URL}/new-tool-requests`, {
         method: 'POST',
         headers: getAuthHeaders({
           'Content-Type': 'application/json',
